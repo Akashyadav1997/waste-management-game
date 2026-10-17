@@ -108,16 +108,6 @@ function disposeGeometries(geometries: THREE.BufferGeometry[]) {
   geometries.forEach((geometry) => geometry.dispose());
 }
 
-function frameAlong(curve: THREE.Curve<THREE.Vector3>, t: number) {
-  const center = curve.getPointAt(t);
-  const tangent = curve.getTangentAt(t).normalize();
-  const side = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), tangent);
-  if (side.lengthSq() < 1e-8) side.set(1, 0, 0);
-  side.normalize();
-  const up = new THREE.Vector3().crossVectors(tangent, side).normalize();
-  return { center, tangent, side, up };
-}
-
 // ==========================================
 // KITCHEN HIGH-FIDELITY PROCEDURAL GENERATORS
 // ==========================================

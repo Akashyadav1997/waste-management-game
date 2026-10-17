@@ -371,7 +371,7 @@ function SceneContents({
           );
         })}
 
-        {/* Dustbins placed on the left and right flanks of table */}
+        {/* Only canonical waste bins are rendered as dustbins. */}
         {chapterDestinations.map((destination, index) => (
           <DestinationModel
             key={destination.id}
@@ -738,7 +738,8 @@ function makeBinFaceTexture(word: string, color: string): THREE.CanvasTexture {
   context.fill();
   drawRecycleMark(context, color);
   context.fillStyle = color;
-  context.font = '800 92px sans-serif';
+  const fontSize = word.length > 7 ? 58 : word.length > 5 ? 72 : 92;
+  context.font = `800 ${fontSize}px sans-serif`;
   context.textAlign = 'center';
   context.textBaseline = 'middle';
   context.fillText(word, 256, 360);
@@ -787,8 +788,8 @@ function HollowBin({
     color,
     roughness: 0.32,
     metalness: 0.08,
-    emissive: highlighted ? '#FDE68A' : '#000000',
-    emissiveIntensity: highlighted ? 0.2 : 0,
+    emissive: highlighted ? '#FDE68A' : color,
+    emissiveIntensity: highlighted ? 0.2 : 0.025,
   };
   const innerW = W - T * 2;
   const innerD = D - T * 2;
@@ -883,12 +884,11 @@ function DestinationModel({
   dropHandledRef: MutableRefObject<boolean>;
   onDestination: (itemId: string, destinationId: string) => void;
 }) {
-  const isWet = destination.id === 'wet-bin';
-  const isDry = destination.id === 'dry-bin';
-  const binColor = isWet ? '#178A45' : isDry ? '#1D4ED8' : destination.color;
-  const word = isWet ? 'WET' : isDry ? 'DRY' : destination.shortLabel.toUpperCase();
+  const binColor = destination.color;
+  const word = destination.shortLabel.toUpperCase();
+  const faceColor = destination.id === 'sanitary-bin' ? '#6B5D00' : binColor;
 
-  const binFace = useMemo(() => makeBinFaceTexture(word, binColor), [word, binColor]);
+  const binFace = useMemo(() => makeBinFaceTexture(word, faceColor), [word, faceColor]);
 
   useEffect(() => () => binFace.dispose(), [binFace]);
   useCursor(Boolean(selectedItemId));

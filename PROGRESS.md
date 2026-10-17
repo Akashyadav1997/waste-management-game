@@ -7,15 +7,15 @@
   - React Three Fiber documentation pairs React 19 with the Fiber 9 line.
   - Drei 10.0.0 supports React 19 and Fiber 9 while staying compatible with this Node 18 workspace.
   - Vite 6 is used because this machine is on Node 18.
-- Checked Indian source-segregation guidance from CPCB/PIB and modeled the game around wet, dry, sanitary and special-care streams.
+- Modeled the game around the supplied four-bin matrix: green wet, blue dry, yellow sanitary and red hazardous household waste.
 - Created a React 19 + TypeScript + Vite app with Three.js, React Three Fiber, Drei and Zustand.
 - Implemented typed waste item data, configurable destination/bin data, chapter data, validation rules, progression helpers and versioned local-storage recovery.
 - Built six playable chapters:
   1. Kitchen wet/dry sorting.
-  2. Packaging versus drain choices.
-  3. Roadside dumping versus collection service.
+  2. Bathroom dry/sanitary sorting while keeping waste out of drains.
+  3. Wet/dry separation before collection.
   4. School courtyard sorting.
-  5. Flooded street causes and safe community actions.
+  5. Flooded street blockage sorting with safe community guidance.
   6. Final mixed challenge.
 - Added procedural 3D dioramas, Jyoti, reusable bins, reusable waste models, dragging, clicking/tapping, and keyboard-accessible HTML controls.
 - Added title, chapter selection, gameplay HUD, feedback, chapter completion, replay, final completion, settings and reset progress.

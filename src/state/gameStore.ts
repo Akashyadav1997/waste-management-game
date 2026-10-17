@@ -139,6 +139,16 @@ export const useGameStore = create<GameState>((set, get) => ({
       return state.feedback ?? getFeedback(itemId, destinationId);
     }
 
+    if (!chapter.itemIds.includes(itemId) || !chapter.destinationIds.includes(destinationId)) {
+      return {
+        itemId,
+        destinationId,
+        correct: false,
+        title: 'Try again',
+        message: 'That item or bin is not available in this chapter.',
+      };
+    }
+
     const feedback = getFeedback(itemId, destinationId);
     const completedItemIds = feedback.correct ? addCompletedItem(state.completedItemIds, itemId) : state.completedItemIds;
     const sortedDestinations = feedback.correct ? { ...state.sortedDestinations, [itemId]: destinationId } : state.sortedDestinations;

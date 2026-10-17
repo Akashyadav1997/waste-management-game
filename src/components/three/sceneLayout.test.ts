@@ -9,13 +9,13 @@ const binCount: Record<ChapterScene, number> = {
   bathroom: 2,
   street: 2,
   school: 2,
-  flood: 3,
+  flood: 2,
   community: 4,
 };
 const itemCount: Record<ChapterScene, number> = {
   kitchen: 6,
-  bathroom: 7,
-  street: 1,
+  bathroom: 6,
+  street: 4,
   school: 3,
   flood: 4,
   community: 6,
@@ -86,6 +86,31 @@ describe('scene layout', () => {
           expect(item.y, `${label} item ${index} floating`).toBeLessThan(top + 0.06);
         });
       }
+    }
+  });
+
+  it('keeps both flood bins visible and clear of Jyoti', () => {
+    for (const aspect of [1.6, 0.5]) {
+      const phone = aspect < 0.75;
+      const frame = getSceneFrame('flood', phone);
+      const camera = new THREE.PerspectiveCamera(40, aspect, 0.1, 40);
+      frameCamera(camera, aspect, 'flood');
+
+      const binCenters = frame.bins.slice(0, 2).map((bin) => {
+        const center = bin.clone();
+        center.y = 0.45;
+        return center.project(camera);
+      });
+      const head = actorPoint(frame.jyoti.position, frame.jyoti.rotation[1], frame.jyoti.scale, bodyLocals[0]).project(camera);
+      const label = phone ? 'phone' : 'desktop';
+
+      binCenters.forEach((center, index) => {
+        expect(Math.abs(center.x), `${label} flood bin ${index} x ${center.x.toFixed(2)}`).toBeLessThan(0.82);
+      });
+      expect(
+        Math.abs(binCenters[0].x - head.x),
+        `${label} wet bin overlaps Jyoti`,
+      ).toBeGreaterThan(phone ? 0.2 : 0.24);
     }
   });
 });

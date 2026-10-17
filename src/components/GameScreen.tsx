@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getChapter } from '../data/chapters';
 import { destinations, getDestination } from '../data/bins';
-import { getWasteItem } from '../data/wasteItems';
+import { getPreparationLabel, getWasteItem } from '../data/wasteItems';
 import { useGameStore } from '../state/gameStore';
 import { audioController } from '../game/audio';
 import type { Chapter } from '../game/types';
@@ -87,6 +87,8 @@ export function GameScreen({ webglAvailable, reducedMotion }: Props) {
   if (trackedChapterId !== chapterId) {
     setTrackedChapterId(chapterId);
     setIntroIndex(0);
+    setMenuOpen(!webglAvailable);
+    setConfettiActive(false);
   }
 
 function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
@@ -152,8 +154,9 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
   const items = chapter.itemIds.map((itemId) => getWasteItem(itemId)).filter(Boolean);
   const progressText = `${completedItemIds.length} of ${chapter.itemIds.length}`;
   const selectedItem = selectedItemId ? getWasteItem(selectedItemId) : undefined;
+  const selectedPreparation = getPreparationLabel(selectedItem?.preparation);
   const caption = selectedItem
-    ? `${selectedItem.displayName}. ${selectedItem.handling}`
+    ? `${selectedItem.displayName}.${selectedPreparation ? ` ${selectedPreparation} before sorting.` : ''} ${selectedItem.handling}`
     : status === 'playing'
       ? playInstruction(chapter)
       : chapter.intro[introIndex];
@@ -307,7 +310,7 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
 
       {/* Accessible Menu Drawer */}
       {status !== 'intro' && menuOpen && (
-        <aside className="accessible-menu" aria-label="Accessible sorting controls">
+        <aside className="accessible-menu" aria-label="Accessible bin sorting controls">
           <div className="objective-panel">
             <h2>{chapter.title}</h2>
             <p>{chapter.objective}</p>
@@ -330,15 +333,18 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
                     key={item.id}
                     disabled={done}
                     onClick={() => handleSelectItem(item.id)}
-                  >
-                    <span>{item.displayName}</span>
-                    <small>{done ? `Sorted to ${destinationLabel ?? 'a bin'}` : 'Tap for hint or choose a destination'}</small>
+                    >
+                      <span>{item.displayName}</span>
+                      {item.preparation && !done && (
+                        <small className="item-requirement">{getPreparationLabel(item.preparation)}</small>
+                      )}
+                      <small>{done ? `Sorted to ${destinationLabel ?? 'a bin'}` : 'Tap for hint or choose a bin'}</small>
                   </button>
                 );
               })}
             </div>
 
-            <h2>Choose destination</h2>
+            <h2>Choose bin</h2>
             <div className="destination-list">
               {chapterDestinations.map((destination) => (
                 <button

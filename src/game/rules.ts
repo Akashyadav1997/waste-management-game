@@ -1,12 +1,10 @@
 import { getDestination } from '../data/bins';
-import { getWasteItem } from '../data/wasteItems';
+import { getPreparationLabel, getWasteItem } from '../data/wasteItems';
 import type { Chapter, Feedback, WasteItem } from './types';
 
 export function isCorrectDestination(item: WasteItem, destinationId: string): boolean {
   const destination = getDestination(destinationId);
   if (!destination) return false;
-  if (item.validDestinations) return item.validDestinations.includes(destinationId);
-  if (destination.alwaysInvalid) return false;
   return destination.acceptedCategories.includes(item.category);
 }
 
@@ -26,30 +24,22 @@ export function getFeedback(itemId: string, destinationId: string): Feedback {
 
   const correct = isCorrectDestination(item, destinationId);
   if (correct) {
+    const preparation = getPreparationLabel(item.preparation);
     return {
       itemId,
       destinationId,
       correct,
       title: 'Good sorting',
-      message: destination.alwaysInvalid ? item.explanation : `${item.explanation} ${destination.note}`,
+      message: `${item.explanation}${preparation ? ` Remember: ${preparation.toLowerCase()} before sorting.` : ''} ${destination.note}`,
     };
   }
-
-  const drainMessage =
-    destination.kind === 'drain'
-      ? 'Packaging in a drain can catch other litter, block water flow and make streets flood.'
-      : destination.kind === 'roadside'
-        ? 'Waste left beside the road can scatter near shops and bring animals close to rubbish.'
-        : destination.acceptedCategories.length > 0
-          ? `This destination is for ${destination.acceptedCategories.join(', ')} waste.`
-          : destination.note;
 
   return {
     itemId,
     destinationId,
     correct,
     title: 'Almost',
-    message: `${drainMessage} Hint: ${item.hint}`,
+    message: `${destination.label} is not the correct bin for this item. Hint: ${item.hint}`,
   };
 }
 

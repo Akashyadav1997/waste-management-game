@@ -30,7 +30,7 @@ npm run verify:browser
 ## Architecture
 
 - `src/data/wasteItems.ts`: typed item catalog with category, model kind, hints, explanations, handling instructions and chapter availability.
-- `src/data/bins.ts`: replaceable bin and destination scheme.
+- `src/data/bins.ts`: canonical four-bin names, colors and category rules.
 - `src/data/chapters.ts`: story chapter configuration.
 - `src/game/rules.ts`: classification and validation rules.
 - `src/game/audio.ts`: replaceable local audio controller for effects, browser narration and optional ambience.
@@ -42,14 +42,14 @@ npm run verify:browser
 
 ## Classification Assumptions
 
-The game uses wet, dry, sanitary and special-care categories. This follows current Indian four-stream source segregation guidance from CPCB/PIB:
+The game follows the supplied four-bin project matrix, with supporting Indian source-segregation references from CPCB/PIB:
 
 - https://www.swm.cpcb.gov.in/
 - https://www.pib.gov.in/PressReleasePage.aspx?PRID=2219676&lang=1&reg=3
 
-Green and blue are commonly used for wet and dry waste. The game labels every destination with text and symbols because color meanings for sanitary and special-care streams can vary by local body. The color scheme is data-driven in `src/data/bins.ts`.
+The canonical project colors are vivid green (`#178A45`) for wet waste, vivid blue (`#1D4ED8`) for dry waste, yellow (`#FFFF00`) for sanitary waste and red (`#FF0000`) for hazardous household waste. Every bin also has a written label and symbol so sorting never depends on color alone.
 
-The game does not teach that every dry item is recyclable. Packaging such as toothpaste tubes and sachets is treated as dry packaging while explaining that it must never enter drains and may need local handling decisions.
+“Rinse clean” and “Wrap safely” are item preparation requirements, not extra bins. The game does not teach that every dry item is recyclable. Empty packaging is treated as dry waste according to the supplied matrix while explaining that it must never enter drains.
 
 ## Asset Credits
 

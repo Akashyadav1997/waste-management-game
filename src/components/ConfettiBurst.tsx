@@ -19,7 +19,10 @@ export function ConfettiBurst({ active }: { active: boolean }) {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
-    if (!active) return;
+    if (!active) {
+      setParticles([]);
+      return;
+    }
 
     // Spawn 32 festive firecracker confetti particles from bottom-right / center
     const newParticles: Particle[] = Array.from({ length: 36 }, (_, i) => {

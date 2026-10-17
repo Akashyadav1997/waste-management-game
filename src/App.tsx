@@ -98,7 +98,7 @@ export default function App() {
             className="info-pill-button"
             onClick={() => setInfoModalOpen(true)}
           >
-            <span>ℹ️</span> Indian Waste Guidelines & Parent Guide
+            <span>ℹ️</span> Waste Guidelines & Parent Guide
           </button>
         </footer>
 

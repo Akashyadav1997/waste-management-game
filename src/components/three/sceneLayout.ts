@@ -148,6 +148,18 @@ const phoneOutdoorJyoti: ActorTransform = {
   scale: 0.64,
 };
 
+const floodJyoti: ActorTransform = {
+  position: [-1.82, 0, 0.98],
+  rotation: [0, 0.72, 0],
+  scale: 0.94,
+};
+
+const phoneFloodJyoti: ActorTransform = {
+  position: [-0.92, 0, 1.12],
+  rotation: [0, 0.62, 0],
+  scale: 0.58,
+};
+
 function outdoorItems(compact: boolean): THREE.Vector3[] {
   const y = 0.1;
   if (compact) {
@@ -185,7 +197,6 @@ const bathroomItems = [
   v(0.58, 0.775, 0.48),
   v(0.82, 0.775, 0.14),
   v(0.08, 0.775, 0.02),
-  v(0.42, 0.775, 0.38),
 ];
 
 const phoneBathroomItems = [
@@ -195,7 +206,6 @@ const phoneBathroomItems = [
   v(0.62, 0.775, 0.44),
   v(0.72, 0.775, 0.1),
   v(0.18, 0.775, 0.04),
-  v(0.42, 0.775, 0.34),
 ];
 
 export function getSceneFrame(scene: ChapterScene, phone: boolean): SceneFrame {
@@ -223,7 +233,7 @@ export function getSceneFrame(scene: ChapterScene, phone: boolean): SceneFrame {
         ? { position: [-0.95, 0, 0.98], rotation: [0, 0.4, 0], scale: 0.78 }
         : { position: [-1.78, 0, 0.42], rotation: [0, 0.5, 0], scale: 1.04 },
       items: phone ? phoneBathroomItems : bathroomItems,
-      itemYaw: [0.3, -0.2, 0.15, 0.4, -0.35, 0.05, 0.2],
+      itemYaw: [0.3, -0.2, 0.15, 0.4, -0.35, 0.05],
       bins: phone ? [v(-1.05, 0, 0.42), v(1.05, 0, 1.05)] : [v(-2.15, 0, 1.12), v(2.05, 0, 1.02)],
       surface: null,
     };
@@ -233,8 +243,8 @@ export function getSceneFrame(scene: ChapterScene, phone: boolean): SceneFrame {
   const bins = (() => {
     if (scene === 'flood') {
       return phone
-        ? [v(-0.62, 0, 0.38), v(0.05, 0, 0.26), v(0.7, 0, 0.38)]
-        : [v(-1.15, 0, 0.42), v(0.15, 0, 0.28), v(1.45, 0, 0.42)];
+        ? [v(-0.38, 0, 0.26), v(0.44, 0, 0.26)]
+        : [v(-0.95, 0, 0.3), v(0.95, 0, 0.3)];
     }
     if (scene === 'community') {
       return phone
@@ -245,7 +255,7 @@ export function getSceneFrame(scene: ChapterScene, phone: boolean): SceneFrame {
   })();
 
   return {
-    jyoti: phone ? phoneOutdoorJyoti : outdoorJyoti,
+    jyoti: scene === 'flood' ? (phone ? phoneFloodJyoti : floodJyoti) : phone ? phoneOutdoorJyoti : outdoorJyoti,
     items: outdoorItems(phone),
     itemYaw: outdoorYaw,
     bins,

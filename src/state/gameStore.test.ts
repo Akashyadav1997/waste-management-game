@@ -31,4 +31,14 @@ describe('game store state transitions', () => {
     useGameStore.getState().submitDestination('clean-paper', 'dry-bin');
     expect(useGameStore.getState().completedItemIds).toEqual(['banana-peel', 'clean-paper']);
   });
+
+  it('rejects bins and items that are not available in the active chapter', () => {
+    const wrongBin = useGameStore.getState().submitDestination('banana-peel', 'hazardous-bin');
+    expect(wrongBin.correct).toBe(false);
+    expect(wrongBin.message).toMatch(/not available/i);
+
+    const wrongItem = useGameStore.getState().submitDestination('used-battery', 'hazardous-bin');
+    expect(wrongItem.correct).toBe(false);
+    expect(useGameStore.getState().completedItemIds).toEqual([]);
+  });
 });

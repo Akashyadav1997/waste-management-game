@@ -1,4 +1,6 @@
-export type WasteCategory = 'wet' | 'dry' | 'sanitary' | 'specialCare';
+export type WasteCategory = 'wet' | 'dry' | 'sanitary' | 'hazardous';
+
+export type PreparationRequirement = 'rinseClean' | 'wrapSafely';
 
 export type ModelKind =
   | 'banana'
@@ -17,8 +19,6 @@ export type ModelKind =
   | 'water'
   | 'buds';
 
-export type DestinationKind = 'bin' | 'drain' | 'roadside' | 'collector' | 'municipal' | 'safe';
-
 export type WasteItem = {
   id: string;
   displayName: string;
@@ -27,8 +27,8 @@ export type WasteItem = {
   explanation: string;
   hint: string;
   handling: string;
+  preparation?: PreparationRequirement;
   chapters: string[];
-  validDestinations?: string[];
 };
 
 export type BinDefinition = {
@@ -42,18 +42,7 @@ export type BinDefinition = {
   note: string;
 };
 
-export type Destination = {
-  id: string;
-  label: string;
-  shortLabel: string;
-  kind: DestinationKind;
-  color: string;
-  textColor: string;
-  symbol: string;
-  acceptedCategories: WasteCategory[];
-  note: string;
-  alwaysInvalid?: boolean;
-};
+export type Destination = BinDefinition & { kind: 'bin' };
 
 export type ChapterScene = 'kitchen' | 'bathroom' | 'street' | 'school' | 'flood' | 'community';
 

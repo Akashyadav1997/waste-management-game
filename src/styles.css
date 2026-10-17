@@ -1081,6 +1081,20 @@ button:disabled {
   margin-top: 2px;
 }
 
+.item-button .item-requirement {
+  display: inline-flex;
+  width: auto;
+  padding: 2px 7px;
+  margin-top: 5px;
+  border: 1px solid #CA8A04;
+  border-radius: 6px;
+  background: #FEF9C3;
+  color: #713F12;
+  font-size: 0.72rem;
+  font-style: normal;
+  font-weight: 800;
+}
+
 .item-button.selected {
   background: #FEF3C7;
   border-color: #F59E0B;
@@ -1143,6 +1157,9 @@ button:disabled {
 .settings-panel {
   max-width: 480px;
   width: 100%;
+  max-height: 90vh;
+  overflow-y: auto;
+  overscroll-behavior: contain;
 }
 
 .info-modal header,
