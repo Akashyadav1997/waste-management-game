@@ -107,6 +107,7 @@ type Props = {
   onItemSelect: (itemId?: string) => void;
   onDestination: (itemId: string, destinationId: string) => void;
   onItemHover?: (itemName?: string) => void;
+  onBinHover?: (binId?: string) => void;
   sortedDestinations: Record<string, string>;
 };
 
@@ -116,6 +117,7 @@ export function GameScene({
   onItemSelect,
   onDestination,
   onItemHover,
+  onBinHover,
   sortedDestinations,
   onReady,
 }: Props & { onReady?: () => void }) {
@@ -183,6 +185,7 @@ export function GameScene({
         onItemSelect={onItemSelect}
         onDestination={onDestination}
         onItemHover={onItemHover}
+        onBinHover={onBinHover}
         sortedDestinations={sortedDestinations}
         draggingRef={draggingRef}
         lowQuality={settings.lowQuality}
@@ -197,6 +200,7 @@ function SceneContents({
   onItemSelect,
   onDestination,
   onItemHover,
+  onBinHover,
   sortedDestinations,
   draggingRef,
   lowQuality,
@@ -301,6 +305,7 @@ function SceneContents({
   const beginDrag = (itemId: string, origin: THREE.Vector3, event: ThreeEvent<PointerEvent>) => {
     if (status !== 'playing' || completedItemIds.includes(itemId)) return;
     event.stopPropagation();
+    onBinHover?.(undefined);
     const hit = pointOnPlane(event.nativeEvent);
     const point = hit ? hit.clone() : origin.clone();
     const offset = new THREE.Vector3(origin.x - point.x, 0, origin.z - point.z);
@@ -387,6 +392,7 @@ function SceneContents({
             selectedItemId={selectedItemId}
             dropHandledRef={dropHandledRef}
             onDestination={onDestination}
+            onHoverChange={(hovered) => onBinHover?.(hovered && !selectedItemId && !draggingId && status === 'playing' ? destination.id : undefined)}
           />
         ))}
       </group>
@@ -844,6 +850,7 @@ function DestinationModel({
   selectedItemId,
   dropHandledRef,
   onDestination,
+  onHoverChange,
 }: {
   destination: Destination;
   position: THREE.Vector3;
@@ -851,6 +858,7 @@ function DestinationModel({
   highlighted: boolean;
   selectedItemId?: string;
   dropHandledRef: MutableRefObject<boolean>;
+  onHoverChange: (hovered: boolean) => void;
   onDestination: (itemId: string, destinationId: string) => void;
 }) {
   const binColor = destination.color;
@@ -868,6 +876,15 @@ function DestinationModel({
       position={position}
       rotation={rotation}
       scale={highlighted ? 1.08 : 1}
+      onPointerOver={(event) => {
+        event.stopPropagation();
+        onHoverChange(true);
+      }}
+      onPointerMove={(event) => {
+        event.stopPropagation();
+        onHoverChange(true);
+      }}
+      onPointerOut={() => onHoverChange(false)}
       onClick={(event) => {
         event.stopPropagation();
         if (dropHandledRef.current) {

@@ -19,6 +19,13 @@ export const binScheme: BinDefinition[] = [
     textColor: '#ffffff',
     symbol: 'W',
     acceptedCategories: ['wet'],
+    colorName: 'Green',
+    examples: [
+      'Fruit and vegetable peels',
+      'Leftover food and eggshells',
+      'Coffee grounds and plastic-free tea bags',
+      'Leaves and flowers',
+    ],
     note: 'Food scraps, vegetable peels and eggshells go here for composting or wet-waste collection.',
   },
   {
@@ -29,6 +36,13 @@ export const binScheme: BinDefinition[] = [
     textColor: '#ffffff',
     symbol: 'D',
     acceptedCategories: ['dry'],
+    colorName: 'Blue',
+    examples: [
+      'Clean paper and cardboard',
+      'Clean plastic packaging',
+      'Glass bottles and metal cans',
+      'Old clothes, fabric and rubber',
+    ],
     note: 'Clean and dry paper, cardboard, bottles and empty packaging go here. Not every dry item is recyclable.',
   },
   {
@@ -39,6 +53,13 @@ export const binScheme: BinDefinition[] = [
     textColor: '#111111',
     symbol: 'S',
     acceptedCategories: ['sanitary'],
+    colorName: 'Yellow',
+    examples: [
+      'Used diapers and sanitary pads',
+      'Used cleaning tissues',
+      'Used cotton swabs / ear buds',
+      'Used household bandages',
+    ],
     note: 'Safely wrapped sanitary waste should be handled by adults and collected separately.',
   },
   {
@@ -49,6 +70,13 @@ export const binScheme: BinDefinition[] = [
     textColor: '#111111',
     symbol: 'H',
     acceptedCategories: ['hazardous'],
+    colorName: 'Red',
+    examples: [
+      'Used batteries and electronics',
+      'Cleaning chemicals, paint and insecticides',
+      'Expired medicines and mercury thermometers',
+      'Light bulbs, tube lights and CFLs',
+    ],
     note: 'Batteries, electronics, chemicals, medicines and bulbs need adult help and designated collection.',
   },
 ];

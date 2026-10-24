@@ -1,3 +1,4 @@
+import { BinGuide } from './BinGuide';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { getSortingRound } from '../game/rounds';
 import { getChapter } from '../data/chapters';
@@ -78,6 +79,7 @@ export function GameScreen({ webglAvailable, reducedMotion }: Props) {
   const settings = useGameStore((state) => state.settings);
   const [introIndex, setIntroIndex] = useState(0);
   const [menuOpen, setMenuOpen] = useState(!webglAvailable);
+  const [hoveredBinId, setHoveredBinId] = useState<string | undefined>();
   const [hoveredItemName, setHoveredItemName] = useState<string | undefined>();
   const [confettiActive, setConfettiActive] = useState(false);
   const [sceneReady, setSceneReady] = useState(false);
@@ -91,6 +93,7 @@ export function GameScreen({ webglAvailable, reducedMotion }: Props) {
     setMenuOpen(!webglAvailable);
     setConfettiActive(false);
     setHoveredItemName(undefined);
+    setHoveredBinId(undefined);
   }
 
 function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
@@ -157,6 +160,8 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
   const items = round.itemIds.map((itemId) => getWasteItem(itemId)).filter(Boolean);
   const progressText = `${completedItemIds.length} of ${chapter.itemIds.length}`;
   const selectedItem = selectedItemId ? getWasteItem(selectedItemId) : undefined;
+  const hoveredBin = chapterDestinations.find((bin) => bin.id === hoveredBinId);
+  const showBinGuide = status === 'playing' && !selectedItemId && !feedback && !menuOpen && !hoveredItemName;
   const selectedPreparation = getPreparationLabel(selectedItem?.preparation);
   const caption = selectedItem
     ? `${selectedItem.displayName}.${selectedPreparation ? ` ${selectedPreparation} before sorting.` : ''} ${selectedItem.handling}`
@@ -180,6 +185,7 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
   };
 
   const handleSelectItem = (itemId?: string) => {
+    setHoveredBinId(undefined);
     if (itemId && itemId !== selectedItemId && !completedItemIds.includes(itemId)) {
       audioController.selection(settings);
       const item = getWasteItem(itemId);
@@ -192,13 +198,14 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
     <section className={`play-layout ${webglAvailable ? '' : 'fallback-layout'}`}>
       <ConfettiBurst active={confettiActive} />
 
-      <div className="game-view" aria-label={`${chapter.title} 3D scene`}>
+      <div className="game-view" onPointerLeave={() => setHoveredBinId(undefined)} aria-label={`${chapter.title} 3D scene`}>
         {webglAvailable ? (
           <GameScene
             chapter={chapter}
             onItemSelect={handleSelectItem}
             onDestination={submit}
             onItemHover={setHoveredItemName}
+            onBinHover={setHoveredBinId}
             reducedMotion={reducedMotion}
             sortedDestinations={sortedDestinations}
             onReady={() => setSceneReady(true)}
@@ -230,6 +237,8 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
           <span>Pick up: <strong>{hoveredItemName}</strong></span>
         </div>
       )}
+
+      {showBinGuide && hoveredBin && <BinGuide bin={hoveredBin} />}
 
       {/* Chapter Intro Card */}
       {status === 'intro' && (

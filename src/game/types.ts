@@ -100,6 +100,8 @@ export type BinDefinition = {
   textColor: string;
   symbol: string;
   acceptedCategories: WasteCategory[];
+  colorName: string;
+  examples: string[];
   note: string;
 };
 
