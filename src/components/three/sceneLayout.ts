@@ -336,6 +336,10 @@ export function frameCamera(camera: THREE.PerspectiveCamera, aspect: number, sce
     camera.fov = fov;
     camera.position.set(0.04, phone ? 1.72 : 1.86, lookZ + distance);
     camera.lookAt(0.02, phone ? 0.58 : 0.72, lookZ);
+  } else if (scene === 'bathroom') {
+    camera.fov = phone ? 50 : narrow ? 44 : 38;
+    camera.position.set(phone ? 0.24 : 0.1, phone ? 3.5 : 3.05, phone ? 7.1 : narrow ? 6.3 : 5.5);
+    camera.lookAt(phone ? 0.24 : 0.1, phone ? 0.5 : 0.65, 0.16);
   } else if (phone) {
     camera.fov = 50;
     camera.position.set(-0.02, 3.2, 6.2);

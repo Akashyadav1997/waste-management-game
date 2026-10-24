@@ -1,3 +1,4 @@
+import { BathroomVanity } from './BathroomVanity';
 import { Canvas, ThreeEvent, useFrame, useThree } from '@react-three/fiber';
 import { Billboard, ContactShadows, RoundedBox, useCursor } from '@react-three/drei';
 import { useEffect, useLayoutEffect, useMemo, useRef, useState, type MutableRefObject } from 'react';
@@ -121,6 +122,7 @@ export function GameScene({
   const settings = useGameStore((state) => state.settings);
   const draggingRef = useRef(false);
   const kitchen = chapter.scene === 'kitchen';
+  const bathroom = chapter.scene === 'bathroom';
 
   return (
     <Canvas
@@ -141,7 +143,7 @@ export function GameScene({
     >
       <color attach="background" args={[kitchen ? '#F6E6D0' : '#FAF5E8']} />
       <ambientLight intensity={kitchen ? 0.38 : 0.8} color={kitchen ? '#FFF4E4' : '#FFFFFF'} />
-      <hemisphereLight args={kitchen ? ['#FFF6E4', '#E7C4A0', 0.7] : ['#FFF7ED', '#FED7AA', 0.65]} />
+      <hemisphereLight args={kitchen ? ['#FFF6E4', '#E7C4A0', 0.7] : bathroom ? ['#F4FAFF', '#B9CDCF', 0.75] : ['#FFF7ED', '#FED7AA', 0.65]} />
       {kitchen ? (
         <>
           <directionalLight
@@ -167,8 +169,8 @@ export function GameScene({
           <directionalLight
             castShadow={!settings.lowQuality}
             position={[4.5, 6.5, 4.0]}
-            intensity={2.4}
-            color="#FEF08A"
+            intensity={bathroom ? 1.9 : 2.4}
+            color={bathroom ? '#F6FAFF' : '#FEF08A'}
             shadow-mapSize={[2048, 2048]}
             shadow-bias={-0.0001}
           />
@@ -579,43 +581,7 @@ function BathroomSet() {
         </mesh>
       </group>
 
-      {/* Wash Vanity Table */}
-      <group position={[0.42, 0, 0.16]}>
-        {/* Vanity Tabletop */}
-        <RoundedBox args={[3.2, 0.16, 1.25]} radius={0.08} position={[0, 0.65, 0]} castShadow receiveShadow>
-          <meshStandardMaterial color="#E0F2FE" roughness={0.4} />
-        </RoundedBox>
-        {/* 4 Sturdy Legs */}
-        {[-1.42, 1.42].map((x) =>
-          [-0.48, 0.48].map((z) => (
-            <mesh key={`${x}-${z}`} position={[x, 0.28, z]} castShadow>
-              <cylinderGeometry args={[0.065, 0.065, 0.58, 14]} />
-              <meshStandardMaterial color="#0284C7" roughness={0.5} />
-            </mesh>
-          )),
-        )}
-        {/* Clean white sorting tray on counter */}
-        <RoundedBox args={[3.0, 0.035, 1.05]} radius={0.04} position={[0, 0.74, 0]} receiveShadow>
-          <meshStandardMaterial color="#FFFFFF" roughness={0.3} />
-        </RoundedBox>
-      </group>
-
-      {/* Ceramic Wash Basin and Chrome Faucet */}
-      <group position={[1.4, 0.88, 0.16]}>
-        <mesh castShadow>
-          <cylinderGeometry args={[0.35, 0.25, 0.2, 24]} />
-          <meshStandardMaterial color="#F8FAFC" roughness={0.2} />
-        </mesh>
-        {/* Chrome Tap */}
-        <mesh position={[0, 0.22, -0.22]} castShadow>
-          <cylinderGeometry args={[0.03, 0.03, 0.24, 16]} />
-          <meshStandardMaterial color="#CBD5E1" metalness={0.9} roughness={0.1} />
-        </mesh>
-        <mesh position={[0, 0.32, -0.1]} rotation={[Math.PI / 4, 0, 0]} castShadow>
-          <cylinderGeometry args={[0.025, 0.025, 0.2, 16]} />
-          <meshStandardMaterial color="#CBD5E1" metalness={0.9} roughness={0.1} />
-        </mesh>
-      </group>
+      <BathroomVanity />
 
       {/* Ground Drain with metallic cover */}
       <group position={[2.25, 0.02, 0.75]}>
