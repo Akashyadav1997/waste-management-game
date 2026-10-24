@@ -3,9 +3,9 @@ import type { BinDefinition, Destination } from '../game/types';
 export const classificationSource = {
   title: 'Project four-bin waste segregation matrix',
   summary:
-    'This game follows the supplied matrix exactly: green for wet waste, blue for dry waste, yellow for sanitary waste, and red for hazardous household waste. Rinsing and safe wrapping are preparation requirements, not separate waste streams.',
+    'This game uses the supplied project bin scheme: green for wet waste, blue for dry waste, yellow for sanitary waste, and red for hazardous household waste. The clarified matrix puts insecticides, medicines and fluorescent lamps in hazardous waste. Rinsing and safe wrapping are preparation requirements, not separate waste streams.',
   urls: [
-    'https://www.swm.cpcb.gov.in/',
+    'https://swm.cpcb.gov.in/',
     'https://www.pib.gov.in/PressReleasePage.aspx?PRID=2219676&lang=1&reg=3',
   ],
 };

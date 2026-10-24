@@ -10,7 +10,8 @@ import { useGameStore } from '../../state/gameStore';
 import { Jyoti, Mother } from './Characters';
 import { KitchenSet } from './KitchenSet';
 import { binMetrics } from './kitchenLayout';
-import { frameCamera, getModelDisplay, getSceneFrame, type ModelDisplayVariant } from './sceneLayout';
+import { frameCamera, getModelDisplay, getSceneFrame, getRoundItemSpots, type ModelDisplayVariant } from './sceneLayout';
+import { getSortingRound } from '../../game/rounds';
 import { WasteShape, type WasteShapeVariant } from './WasteShapes';
 
 const DRAG_HEIGHT = 1.05;
@@ -208,7 +209,8 @@ function SceneContents({
   );
   const phoneLayout = size.width / Math.max(size.height, 1) < 0.75;
   const frame = useMemo(() => getSceneFrame(chapter.scene, phoneLayout), [chapter.scene, phoneLayout]);
-  const spots = frame.items;
+  const round = getSortingRound(chapter, completedItemIds);
+  const spots = useMemo(() => getRoundItemSpots(chapter.scene, phoneLayout), [chapter.scene, phoneLayout]);
   const slots = useMemo(
     () => frame.bins.slice(0, chapterDestinations.length),
     [chapterDestinations.length, frame.bins],
@@ -347,13 +349,14 @@ function SceneContents({
         )}
 
         {/* Interactive Waste Items on the sorting table */}
-        {chapter.itemIds.map((itemId, index) => {
+        {round.itemIds.map((itemId, index) => {
           const item = getWasteItem(itemId);
           if (!item) return null;
           return (
             <InteractiveWaste
               key={`${chapter.id}-${item.id}`}
               item={item}
+              sceneScale={chapter.scene === 'kitchen' || chapter.scene === 'bathroom' ? 1 : phoneLayout ? 0.58 : 0.85}
               origin={spots[index] ?? new THREE.Vector3(0, 0.7, 0)}
               selected={selectedItemId === item.id}
               completed={completedItemIds.includes(item.id)}
@@ -943,6 +946,7 @@ function ItemHitTarget({ size }: { size?: [number, number, number] }) {
 
 function InteractiveWaste({
   item,
+  sceneScale,
   origin,
   spotYaw,
   selected,
@@ -956,6 +960,7 @@ function InteractiveWaste({
   onHoverChange,
 }: {
   item: WasteItem;
+  sceneScale: number;
   origin: THREE.Vector3;
   spotYaw: number;
   selected: boolean;
@@ -1020,16 +1025,16 @@ function InteractiveWaste({
         <group
           position={display.offset}
           rotation={display.rotation}
-          scale={1.12 * display.scale}
+          scale={1.12 * display.scale * sceneScale}
         >
           <WasteShape kind={item.model} color={completed ? '#AAB7A8' : undefined} variant={variant} />
         </group>
-        <ItemHitTarget size={display.hitSize} />
+        <ItemHitTarget size={display.hitSize?.map((value) => value * sceneScale) as [number, number, number] | undefined} />
         {selected && !completed && <SelectionHalo radius={display.selectionRadius} ovalScale={display.selectionScale} />}
       </group>
 
       {/* Floating 3D item name badge on hover - billboarded to ALWAYS face camera horizontally */}
-      {hovered && !completed && (
+      {(hovered || selected) && !completed && (
         <Billboard position={[0, 0.32, 0]} follow={true}>
           <mesh>
             <planeGeometry args={[badge.width, 0.11]} />

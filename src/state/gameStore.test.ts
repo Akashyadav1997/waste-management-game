@@ -1,5 +1,8 @@
 import { beforeEach, describe, expect, it } from 'vitest';
 import { useGameStore } from './gameStore';
+import { chapters } from '../data/chapters';
+import { getWasteItem } from '../data/wasteItems';
+import { getSortingRound } from '../game/rounds';
 import { clearProgress } from './storage';
 
 describe('game store state transitions', () => {
@@ -41,4 +44,29 @@ describe('game store state transitions', () => {
     expect(wrongItem.correct).toBe(false);
     expect(useGameStore.getState().completedItemIds).toEqual([]);
   });
+});
+
+
+it('rejects hidden-round items and completes only after every chapter item is sorted', () => {
+  useGameStore.getState().resetProgress();
+  useGameStore.getState().startNew();
+  for (const chapter of chapters) {
+    useGameStore.getState().startChapter(chapter.id);
+    useGameStore.setState({ status: 'playing' });
+    const hiddenId = chapter.itemIds[chapter.itemsPerRound ?? 3];
+    useGameStore.getState().selectItem(hiddenId);
+    expect(useGameStore.getState().selectedItemId).toBeUndefined();
+    expect(useGameStore.getState().submitDestination(hiddenId, `${getWasteItem(hiddenId)!.category}-bin`).correct).toBe(false);
+    expect(useGameStore.getState().completedItemIds).toEqual([]);
+    for (const id of chapter.itemIds) {
+      const state = useGameStore.getState();
+      expect(state.status).toBe('playing');
+      expect(getSortingRound(chapter, state.completedItemIds).itemIds).toContain(id);
+      expect(state.submitDestination(id, `${getWasteItem(id)!.category}-bin`).correct).toBe(true);
+    }
+    expect(useGameStore.getState().status).toBe('chapterComplete');
+    expect(useGameStore.getState().completedChapters).toContain(chapter.id);
+  }
+  useGameStore.getState().replayChapter('kitchen');
+  expect(useGameStore.getState().completedItemIds).toEqual([]);
 });

@@ -623,7 +623,11 @@ button:disabled {
   transform: translateX(-50%);
   z-index: 10;
   display: flex;
-  gap: 12px;
+  gap: 4px 12px;
+  flex-wrap: wrap;
+  justify-content: center;
+  width: max-content;
+  max-width: calc(100% - 32px);
   align-items: center;
   padding: 8px 22px;
   border-radius: 999px;
@@ -1502,3 +1506,7 @@ button:disabled {
     animation: none;
   }
 }
+
+.progress-pill small { flex-basis: 100%; text-align: center; color: #475569; font-size: 0.75rem; }
+.round-instruction { font-size: 0.85rem; color: #475569; line-height: 1.5; }
+.hover-item-tooltip { top: 92px; }

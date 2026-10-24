@@ -1,352 +1,17 @@
+import { BananaSkin, VegetableSkins } from './OrganicWasteShapes';
+import { CatalogueShape } from './CatalogueShapes';
 import { RoundedBox } from '@react-three/drei';
 import { useEffect, useMemo } from 'react';
 import * as THREE from 'three';
 import type { ModelKind } from '../../game/types';
 import {
-  createBananaTexture,
   createBottleLabelTexture,
   createCardboardTexture,
   createEggshellTexture,
-  createOnionTexture,
   createPaperTexture,
 } from './textures';
 
 export type WasteShapeVariant = 'default' | 'kitchen';
-
-type RibbonOptions = {
-  length: number;
-  maxWidth: number;
-  curl: number;
-  lift: number;
-  lateral: number;
-  cup: number;
-  inset?: number;
-  yOffset?: number;
-  tStart?: number;
-  tEnd?: number;
-  lengthSegments?: number;
-  widthSegments?: number;
-};
-
-function ribbonPoint(t: number, s: number, options: RibbonOptions) {
-  const inset = options.inset ?? 1;
-  const wave = Math.max(0, Math.sin(Math.PI * t));
-  const pointedTip = 1 - 0.74 * t ** 4;
-  const halfWidth = (0.008 + options.maxWidth * wave ** 0.72 * (0.96 - t * 0.24)) * pointedTip * inset;
-  const centerX = options.lateral * Math.sin(t * Math.PI * 0.82) * (0.2 + t * 0.8);
-  const centerY = 0.008 + options.lift * Math.sin(t * Math.PI * 0.78) + options.curl * t ** 2 + (options.yOffset ?? 0);
-  const centerZ = options.length * t;
-  const cuppedY = options.cup * s ** 2 * (0.32 + t * 0.68);
-  return new THREE.Vector3(centerX + s * halfWidth, centerY + cuppedY, centerZ);
-}
-
-function createRibbonSurfaceGeometry(options: RibbonOptions) {
-  const lengthSegments = options.lengthSegments ?? 28;
-  const widthSegments = options.widthSegments ?? 8;
-  const tStart = options.tStart ?? 0;
-  const tEnd = options.tEnd ?? 1;
-  const positions: number[] = [];
-  const uvs: number[] = [];
-  const indices: number[] = [];
-
-  for (let i = 0; i <= lengthSegments; i += 1) {
-    const u = i / lengthSegments;
-    const t = THREE.MathUtils.lerp(tStart, tEnd, u);
-    for (let j = 0; j <= widthSegments; j += 1) {
-      const v = j / widthSegments;
-      const s = -1 + v * 2;
-      const point = ribbonPoint(t, s, options);
-      positions.push(point.x, point.y, point.z);
-      uvs.push(v, u);
-    }
-  }
-
-  for (let i = 0; i < lengthSegments; i += 1) {
-    for (let j = 0; j < widthSegments; j += 1) {
-      const a = i * (widthSegments + 1) + j;
-      const b = a + widthSegments + 1;
-      indices.push(a, b, a + 1, b, b + 1, a + 1);
-    }
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-function createRibbonEdgeGeometry(options: RibbonOptions, side: -1 | 1, thickness = 0.008) {
-  const lengthSegments = options.lengthSegments ?? 28;
-  const tStart = options.tStart ?? 0;
-  const tEnd = options.tEnd ?? 1;
-  const positions: number[] = [];
-  const indices: number[] = [];
-
-  for (let i = 0; i <= lengthSegments; i += 1) {
-    const u = i / lengthSegments;
-    const t = THREE.MathUtils.lerp(tStart, tEnd, u);
-    const top = ribbonPoint(t, side, options);
-    const bottom = ribbonPoint(t, side, { ...options, yOffset: (options.yOffset ?? 0) - thickness });
-    positions.push(top.x, top.y, top.z, bottom.x, bottom.y, bottom.z);
-  }
-
-  for (let i = 0; i < lengthSegments; i += 1) {
-    const a = i * 2;
-    indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-function disposeGeometries(geometries: THREE.BufferGeometry[]) {
-  geometries.forEach((geometry) => geometry.dispose());
-}
-
-// ==========================================
-// KITCHEN HIGH-FIDELITY PROCEDURAL GENERATORS
-// ==========================================
-
-/** Generates an authentic crescent-curved banana with peel flaps peeled open */
-function createCrescentBananaGeometries() {
-  const points = [
-    new THREE.Vector3(-0.17, 0.024, 0.03),
-    new THREE.Vector3(-0.09, 0.062, -0.015),
-    new THREE.Vector3(0.0, 0.078, -0.045),
-    new THREE.Vector3(0.09, 0.058, -0.02),
-    new THREE.Vector3(0.17, 0.025, 0.025),
-  ];
-  const curve = new THREE.CatmullRomCurve3(points);
-  const segments = 32;
-  const radial = 18;
-  const positions: number[] = [];
-  const uvs: number[] = [];
-  const indices: number[] = [];
-
-  const radiusAt = (t: number) => {
-    const belly = Math.sin(Math.PI * t) ** 0.55;
-    return (0.014 + 0.038 * belly) * (1 - 0.16 * t);
-  };
-
-  for (let i = 0; i <= segments; i += 1) {
-    const t = i / segments;
-    const pt = curve.getPointAt(t);
-    const tangent = curve.getTangentAt(t).normalize();
-    const up = new THREE.Vector3(0, 1, 0);
-    const side = new THREE.Vector3().crossVectors(up, tangent).normalize();
-    const norm = new THREE.Vector3().crossVectors(tangent, side).normalize();
-    const r = radiusAt(t);
-
-    for (let j = 0; j <= radial; j += 1) {
-      const v = j / radial;
-      const angle = v * Math.PI * 2;
-      const facet = 1 + 0.065 * Math.cos(angle * 5);
-      const px = pt.x + (side.x * Math.cos(angle) + norm.x * Math.sin(angle)) * r * facet;
-      const py = pt.y + (side.y * Math.cos(angle) + norm.y * Math.sin(angle)) * r * facet;
-      const pz = pt.z + (side.z * Math.cos(angle) + norm.z * Math.sin(angle)) * r * facet;
-
-      positions.push(px, py, pz);
-      uvs.push(t * 2, v);
-    }
-  }
-
-  for (let i = 0; i < segments; i += 1) {
-    for (let j = 0; j < radial; j += 1) {
-      const a = i * (radial + 1) + j;
-      const b = a + radial + 1;
-      indices.push(a, b, a + 1, b, b + 1, a + 1);
-    }
-  }
-
-  const bodyGeom = new THREE.BufferGeometry();
-  bodyGeom.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  bodyGeom.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  bodyGeom.setIndex(indices);
-  bodyGeom.computeVertexNormals();
-
-  // Stem curve at t = 0
-  const stemPoints = [
-    new THREE.Vector3(-0.17, 0.024, 0.03),
-    new THREE.Vector3(-0.2, 0.045, 0.045),
-    new THREE.Vector3(-0.22, 0.072, 0.04),
-    new THREE.Vector3(-0.21, 0.096, 0.025),
-  ];
-  const stemGeom = new THREE.TubeGeometry(new THREE.CatmullRomCurve3(stemPoints), 12, 0.01, 8, false);
-
-  // Peeled Flap 1 (peeled forward onto the wood)
-  const flap1Points = [
-    new THREE.Vector3(-0.06, 0.072, -0.01),
-    new THREE.Vector3(-0.04, 0.082, 0.04),
-    new THREE.Vector3(-0.02, 0.05, 0.095),
-    new THREE.Vector3(0.01, 0.008, 0.15),
-    new THREE.Vector3(0.03, 0.018, 0.18),
-  ];
-  const flap1Curve = new THREE.CatmullRomCurve3(flap1Points);
-
-  // Peeled Flap 2 (peeled backward onto the wood)
-  const flap2Points = [
-    new THREE.Vector3(0.02, 0.076, -0.04),
-    new THREE.Vector3(0.05, 0.082, -0.07),
-    new THREE.Vector3(0.08, 0.045, -0.11),
-    new THREE.Vector3(0.11, 0.008, -0.14),
-    new THREE.Vector3(0.13, 0.018, -0.16),
-  ];
-  const flap2Curve = new THREE.CatmullRomCurve3(flap2Points);
-
-  const makeFlap = (curvePath: THREE.CatmullRomCurve3) => {
-    const fSegs = 18;
-    const fPositions: number[] = [];
-    const fUvs: number[] = [];
-    const fIndices: number[] = [];
-    const width = 0.048;
-
-    for (let i = 0; i <= fSegs; i += 1) {
-      const t = i / fSegs;
-      const pt = curvePath.getPointAt(t);
-      const tang = curvePath.getTangentAt(t).normalize();
-      const n = new THREE.Vector3().crossVectors(new THREE.Vector3(0, 1, 0), tang).normalize();
-      const w = width * (1 - 0.38 * t);
-
-      fPositions.push(pt.x - (n.x * w) / 2, pt.y, pt.z - (n.z * w) / 2);
-      fUvs.push(0, t);
-      fPositions.push(pt.x + (n.x * w) / 2, pt.y, pt.z + (n.z * w) / 2);
-      fUvs.push(1, t);
-    }
-
-    for (let i = 0; i < fSegs; i += 1) {
-      const a = i * 2;
-      fIndices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-      fIndices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
-    }
-
-    const g = new THREE.BufferGeometry();
-    g.setAttribute('position', new THREE.Float32BufferAttribute(fPositions, 3));
-    g.setAttribute('uv', new THREE.Float32BufferAttribute(fUvs, 2));
-    g.setIndex(fIndices);
-    g.computeVertexNormals();
-    return g;
-  };
-
-  const flap1 = makeFlap(flap1Curve);
-  const flap2 = makeFlap(flap2Curve);
-
-  return { body: bodyGeom, stem: stemGeom, flap1, flap2, tipPos: points[4] };
-}
-
-function createCarrotSpiralGeometry(turns = 2.6, radius = 0.038, length = 0.16) {
-  const steps = 36;
-  const width = 0.022;
-  const positions: number[] = [];
-  const indices: number[] = [];
-
-  for (let i = 0; i <= steps; i += 1) {
-    const t = i / steps;
-    const theta = t * turns * Math.PI * 2;
-    const r = radius - t * (radius * 0.35);
-    const cx = r * Math.cos(theta);
-    const cz = r * Math.sin(theta) + t * length;
-    const cy = 0.012 + t * 0.036;
-
-    const nx = -Math.sin(theta);
-    const nz = Math.cos(theta);
-
-    positions.push(cx - (nx * width) / 2, cy - 0.004, cz - (nz * width) / 2);
-    positions.push(cx + (nx * width) / 2, cy + 0.004, cz + (nz * width) / 2);
-  }
-
-  for (let i = 0; i < steps; i += 1) {
-    const a = i * 2;
-    indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-    indices.push(a, a + 2, a + 1, a + 1, a + 2, a + 3);
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-function createOnionSliceGeometry() {
-  const stepsU = 16;
-  const stepsV = 12;
-  const positions: number[] = [];
-  const uvs: number[] = [];
-  const indices: number[] = [];
-
-  for (let i = 0; i <= stepsV; i += 1) {
-    const v = i / stepsV;
-    const z = (v - 0.5) * 0.12;
-    const cupZ = Math.sin(v * Math.PI) * 0.016;
-
-    for (let j = 0; j <= stepsU; j += 1) {
-      const u = j / stepsU;
-      const angle = (u - 0.5) * Math.PI * 0.82;
-      const r = 0.052;
-      const x = r * Math.sin(angle);
-      const y = 0.012 + r * (1 - Math.cos(angle)) + cupZ;
-
-      positions.push(x, y, z);
-      uvs.push(u, v);
-    }
-  }
-
-  for (let i = 0; i < stepsV; i += 1) {
-    for (let j = 0; j < stepsU; j += 1) {
-      const a = i * (stepsU + 1) + j;
-      const b = a + stepsU + 1;
-      indices.push(a, b, a + 1, b, b + 1, a + 1);
-    }
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
-}
-
-function createTwistedPeelGeometry() {
-  const steps = 24;
-  const length = 0.22;
-  const width = 0.026;
-  const positions: number[] = [];
-  const uvs: number[] = [];
-  const indices: number[] = [];
-
-  for (let i = 0; i <= steps; i += 1) {
-    const t = i / steps;
-    const z = (t - 0.5) * length;
-    const arch = Math.sin(t * Math.PI) * 0.022;
-    const twist = t * Math.PI * 1.25;
-
-    const nx = Math.cos(twist) * width * 0.5;
-    const ny = Math.sin(twist) * width * 0.5;
-
-    positions.push(-nx, 0.014 + arch - ny, z);
-    uvs.push(0, t);
-    positions.push(nx, 0.014 + arch + ny, z);
-    uvs.push(1, t);
-  }
-
-  for (let i = 0; i < steps; i += 1) {
-    const a = i * 2;
-    indices.push(a, a + 1, a + 2, a + 1, a + 3, a + 2);
-  }
-
-  const geometry = new THREE.BufferGeometry();
-  geometry.setAttribute('position', new THREE.Float32BufferAttribute(positions, 3));
-  geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
-  geometry.setIndex(indices);
-  geometry.computeVertexNormals();
-  return geometry;
-}
 
 function createHollowEggshellGeometry(options: {
   radius: number;
@@ -372,23 +37,23 @@ function createHollowEggshellGeometry(options: {
       const t = i / rings;
       const yNorm = 1 - Math.cos((t * Math.PI) / 2);
       const rNorm = Math.sin((t * Math.PI) / 2) * (1 + 0.14 * Math.cos((t * Math.PI) / 2));
-      let y = hOffset + yNorm * (height - hOffset);
+      const y = hOffset + yNorm * (height - hOffset);
       const r = rNorm * rScale;
 
       for (let j = 0; j <= segments; j += 1) {
         const v = j / segments;
         const angle = v * Math.PI * 2;
 
+        let crack = 0;
         if (i === rings) {
-          const crack =
+          crack =
             Math.sin(angle * rimTeeth + crackSeed) * 0.013 +
             Math.cos(angle * (rimTeeth + 3) + crackSeed * 1.6) * 0.007;
-          y += crack;
         }
 
         const x = r * Math.cos(angle);
         const z = r * Math.sin(angle);
-        positions.push(x, y, z);
+        positions.push(x, y + crack, z);
         uvs.push(v, t);
       }
     }
@@ -428,6 +93,10 @@ function createHollowEggshellGeometry(options: {
   geometry.setAttribute('uv', new THREE.Float32BufferAttribute(uvs, 2));
   geometry.setIndex(indices);
   geometry.computeVertexNormals();
+  const faceIndices = rings * segments * 6;
+  geometry.addGroup(0, faceIndices, 0);
+  geometry.addGroup(faceIndices, faceIndices, 1);
+  geometry.addGroup(faceIndices * 2, segments * 6, 1);
   return geometry;
 }
 
@@ -500,422 +169,6 @@ function createContouredBottleGeometry() {
     [0.004, 0.355],
   ].map(([x, y]) => new THREE.Vector2(x, y));
   return new THREE.LatheGeometry(points, 32);
-}
-
-function BananaPeelFlap({
-  yaw,
-  length,
-  curl,
-  maxWidth,
-  lift,
-  lateral,
-  cup,
-  color,
-}: {
-  yaw: number;
-  length: number;
-  curl: number;
-  maxWidth: number;
-  lift: number;
-  lateral: number;
-  cup: number;
-  color?: string;
-}) {
-  const base = useMemo(
-    () => ({ length, maxWidth, curl, lift, lateral, cup }),
-    [length, maxWidth, curl, lift, lateral, cup],
-  );
-  const geometries = useMemo(
-    () => ({
-      skin: createRibbonSurfaceGeometry(base),
-      inner: createRibbonSurfaceGeometry({ ...base, inset: 0.66, yOffset: 0.007, tStart: 0.04, tEnd: 0.92 }),
-      tip: createRibbonSurfaceGeometry({ ...base, inset: 0.82, yOffset: 0.011, tStart: 0.84, tEnd: 1, lengthSegments: 7 }),
-      leftEdge: createRibbonEdgeGeometry(base, -1, 0.009),
-      rightEdge: createRibbonEdgeGeometry(base, 1, 0.009),
-    }),
-    [base],
-  );
-  useEffect(
-    () => () => disposeGeometries(Object.values(geometries)),
-    [geometries],
-  );
-
-  const flat = Boolean(color);
-  return (
-    <group rotation={[0, yaw, 0]}>
-      <mesh geometry={geometries.skin} castShadow receiveShadow>
-        <meshStandardMaterial color={color ?? '#F4C20D'} roughness={0.58} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh geometry={geometries.leftEdge} castShadow>
-        <meshStandardMaterial color={color ?? '#D79E05'} roughness={0.62} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh geometry={geometries.rightEdge} castShadow>
-        <meshStandardMaterial color={color ?? '#D79E05'} roughness={0.62} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh geometry={geometries.inner} castShadow>
-        <meshStandardMaterial color={color ?? '#FFF0B8'} roughness={0.68} side={THREE.DoubleSide} />
-      </mesh>
-      {!flat && (
-        <mesh geometry={geometries.tip} castShadow>
-          <meshStandardMaterial color="#8B5A2B" roughness={0.78} side={THREE.DoubleSide} />
-        </mesh>
-      )}
-    </group>
-  );
-}
-
-function BananaPeel({ color }: { color?: string }) {
-  const flaps = [
-    { yaw: -0.62, length: 0.3, curl: 0.04, maxWidth: 0.082, lift: 0.012, lateral: 0.018, cup: 0.013 },
-    { yaw: 2.18, length: 0.31, curl: 0.04, maxWidth: 0.068, lift: 0.012, lateral: 0.024, cup: 0.011 },
-    { yaw: -2.16, length: 0.32, curl: 0.043, maxWidth: 0.07, lift: 0.014, lateral: -0.02, cup: 0.012 },
-  ];
-  return (
-    <group position={[0, 0.012, 0]}>
-      {flaps.map((flap) => (
-        <BananaPeelFlap key={flap.yaw} {...flap} color={color} />
-      ))}
-      <mesh position={[0, 0.03, 0]} scale={[1.15, 0.42, 1.05]} castShadow>
-        <sphereGeometry args={[0.038, 20, 14]} />
-        <meshStandardMaterial color={color ?? '#FFE9A6'} roughness={0.7} />
-      </mesh>
-      <mesh position={[0.006, 0.058, -0.032]} rotation={[0.9, 0.08, -0.12]} castShadow>
-        <capsuleGeometry args={[0.009, 0.055, 5, 12]} />
-        <meshStandardMaterial color={color ?? '#5C371C'} roughness={0.8} />
-      </mesh>
-    </group>
-  );
-}
-
-function KitchenBananaPeel({ color }: { color?: string }) {
-  const parts = useMemo(() => createCrescentBananaGeometries(), []);
-  const skinMap = useMemo(() => (color ? null : createBananaTexture()), [color]);
-
-  useEffect(
-    () => () => {
-      parts.body.dispose();
-      parts.stem.dispose();
-      parts.flap1.dispose();
-      parts.flap2.dispose();
-      skinMap?.dispose();
-    },
-    [parts, skinMap],
-  );
-
-  const flat = Boolean(color);
-
-  return (
-    <group position={[0, 0.012, 0]} rotation={[0.08, -0.25, 0.04]} scale={1.14}>
-      {/* 1. Main Curved Crescent Banana Body with 5-sided facets & texture */}
-      <mesh geometry={parts.body} castShadow receiveShadow>
-        <meshStandardMaterial
-          color={color ?? '#FACC15'}
-          map={skinMap ?? undefined}
-          roughness={0.52}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* 2. Curved Woody Greenish-Brown Stem */}
-      <mesh geometry={parts.stem} castShadow>
-        <meshStandardMaterial color={color ?? '#365314'} roughness={0.82} />
-      </mesh>
-
-      {/* Cut tip cap of stem */}
-      <mesh position={[-0.21, 0.098, 0.024]} rotation={[0.3, 0.2, 0.8]} castShadow>
-        <cylinderGeometry args={[0.01, 0.01, 0.006, 8]} />
-        <meshStandardMaterial color={color ?? '#84CC16'} roughness={0.7} />
-      </mesh>
-
-      {/* Green transition collar at base of stem */}
-      <mesh position={[-0.17, 0.026, 0.03]} rotation={[0.2, 0.4, 0.6]} castShadow>
-        <cylinderGeometry args={[0.014, 0.018, 0.016, 12]} />
-        <meshStandardMaterial color={color ?? '#65A30D'} roughness={0.72} />
-      </mesh>
-
-      {/* 3. Peeled Front Flap curling onto the wooden counter */}
-      <mesh geometry={parts.flap1} castShadow receiveShadow>
-        <meshStandardMaterial
-          color={color ?? '#FACC15'}
-          map={skinMap ?? undefined}
-          roughness={0.55}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {/* Inner pale cream lining of front flap */}
-      <mesh geometry={parts.flap1} position={[0, 0.003, 0]} castShadow>
-        <meshStandardMaterial color={color ?? '#FEF9C3'} roughness={0.78} side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* 4. Peeled Back Flap curling backward onto the counter */}
-      <mesh geometry={parts.flap2} castShadow receiveShadow>
-        <meshStandardMaterial
-          color={color ?? '#FACC15'}
-          map={skinMap ?? undefined}
-          roughness={0.55}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      {/* Inner pale cream lining of back flap */}
-      <mesh geometry={parts.flap2} position={[0, 0.003, 0]} castShadow>
-        <meshStandardMaterial color={color ?? '#FEF9C3'} roughness={0.78} side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* 5. Exposed Banana Fruit Core inside opening */}
-      {!flat && (
-        <mesh position={[0.0, 0.082, -0.04]} rotation={[0, 0.2, -0.1]} castShadow>
-          <capsuleGeometry args={[0.026, 0.09, 6, 12]} />
-          <meshStandardMaterial color="#FFFDE0" roughness={0.65} />
-        </mesh>
-      )}
-
-      {/* 6. Dark Bruised Blossom End Tip */}
-      {!flat && (
-        <mesh position={parts.tipPos} scale={[1.1, 0.8, 1.1]} castShadow>
-          <sphereGeometry args={[0.016, 10, 8]} />
-          <meshStandardMaterial color="#6B3410" roughness={0.85} />
-        </mesh>
-      )}
-    </group>
-  );
-}
-
-function CurvedScrap({
-  position,
-  rotation,
-  length,
-  maxWidth,
-  curl,
-  lift,
-  lateral,
-  cup,
-  outerColor,
-  innerColor,
-  edgeColor,
-  color,
-  opacity = 1,
-  innerInset = 0.62,
-}: {
-  position: [number, number, number];
-  rotation: [number, number, number];
-  length: number;
-  maxWidth: number;
-  curl: number;
-  lift: number;
-  lateral: number;
-  cup: number;
-  outerColor: string;
-  innerColor?: string;
-  edgeColor: string;
-  color?: string;
-  opacity?: number;
-  innerInset?: number;
-}) {
-  const base = useMemo(
-    () => ({ length, maxWidth, curl, lift, lateral, cup, lengthSegments: 22, widthSegments: 6 }),
-    [length, maxWidth, curl, lift, lateral, cup],
-  );
-  const geometries = useMemo(
-    () => ({
-      outer: createRibbonSurfaceGeometry(base),
-      inner: innerColor ? createRibbonSurfaceGeometry({ ...base, inset: innerInset, yOffset: 0.006, tStart: 0.05, tEnd: 0.92 }) : undefined,
-      leftEdge: createRibbonEdgeGeometry(base, -1, 0.006),
-      rightEdge: createRibbonEdgeGeometry(base, 1, 0.006),
-    }),
-    [base, innerColor, innerInset],
-  );
-  useEffect(
-    () => () => disposeGeometries(Object.values(geometries).filter((geometry): geometry is THREE.BufferGeometry => Boolean(geometry))),
-    [geometries],
-  );
-
-  const flatColor = color;
-  return (
-    <group position={position} rotation={rotation}>
-      <mesh geometry={geometries.outer} castShadow receiveShadow>
-        <meshStandardMaterial
-          color={flatColor ?? outerColor}
-          roughness={0.72}
-          transparent={!flatColor && opacity < 1}
-          opacity={flatColor ? 1 : opacity}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-      <mesh geometry={geometries.leftEdge} castShadow>
-        <meshStandardMaterial color={flatColor ?? edgeColor} roughness={0.74} side={THREE.DoubleSide} />
-      </mesh>
-      <mesh geometry={geometries.rightEdge} castShadow>
-        <meshStandardMaterial color={flatColor ?? edgeColor} roughness={0.74} side={THREE.DoubleSide} />
-      </mesh>
-      {geometries.inner && (
-        <mesh geometry={geometries.inner} castShadow>
-          <meshStandardMaterial
-            color={flatColor ?? innerColor}
-            roughness={0.78}
-            transparent={!flatColor && opacity < 1}
-            opacity={flatColor ? 1 : Math.min(0.9, opacity + 0.12)}
-            side={THREE.DoubleSide}
-          />
-        </mesh>
-      )}
-    </group>
-  );
-}
-
-function KitchenVegetablePeels({ color }: { color?: string }) {
-  const flat = Boolean(color);
-  const carrotSpiral = useMemo(() => createCarrotSpiralGeometry(2.6, 0.036, 0.16), []);
-  const carrotRing = useMemo(() => createCarrotSpiralGeometry(1.6, 0.024, 0.08), []);
-  const onion = useMemo(() => createOnionSliceGeometry(), []);
-  const potato = useMemo(() => createTwistedPeelGeometry(), []);
-  const onionTexture = useMemo(() => (color ? null : createOnionTexture()), [color]);
-
-  useEffect(
-    () => () => {
-      carrotSpiral.dispose();
-      carrotRing.dispose();
-      onion.dispose();
-      potato.dispose();
-      onionTexture?.dispose();
-    },
-    [carrotSpiral, carrotRing, onion, potato, onionTexture],
-  );
-
-  return (
-    <group position={[-0.01, 0.006, 0]} scale={1.14}>
-      {/* 1. Spiral Carrot Ribbon */}
-      <mesh
-        geometry={carrotSpiral}
-        position={[-0.08, 0.004, 0.04]}
-        rotation={[0.1, -0.4, 0.2]}
-        castShadow
-        receiveShadow
-      >
-        <meshStandardMaterial color={color ?? '#EA580C'} roughness={0.48} side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* 2. Smaller Carrot Curl */}
-      <mesh
-        geometry={carrotRing}
-        position={[0.06, 0.006, 0.08]}
-        rotation={[0.2, 0.8, -0.3]}
-        castShadow
-      >
-        <meshStandardMaterial color={color ?? '#F97316'} roughness={0.5} side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* 3. Translucent Red Onion Skin */}
-      <mesh
-        geometry={onion}
-        position={[0.02, 0.005, -0.06]}
-        rotation={[0.15, 0.6, 0.1]}
-        castShadow
-      >
-        <meshStandardMaterial
-          color={color ?? '#9D174D'}
-          map={onionTexture ?? undefined}
-          transparent={!flat}
-          opacity={flat ? 1 : 0.86}
-          roughness={0.38}
-          side={THREE.DoubleSide}
-        />
-      </mesh>
-
-      {/* 4. Twisted Potato Peel */}
-      <mesh
-        geometry={potato}
-        position={[-0.02, 0.004, -0.02]}
-        rotation={[-0.1, 0.35, 0.05]}
-        castShadow
-      >
-        <meshStandardMaterial color={color ?? '#854D0E'} roughness={0.72} side={THREE.DoubleSide} />
-      </mesh>
-
-      {/* 5. Fresh Herb / Celery Sprig */}
-      {!flat && (
-        <group position={[-0.14, 0.012, -0.05]} rotation={[0.1, 0.5, 0.2]}>
-          <mesh castShadow>
-            <cylinderGeometry args={[0.005, 0.008, 0.14, 6]} />
-            <meshStandardMaterial color="#86EFAC" roughness={0.65} />
-          </mesh>
-          {[-0.035, 0, 0.035].map((off, idx) => (
-            <mesh key={idx} position={[off, 0.065, 0]} rotation={[0, 0, (idx - 1) * 0.45]} castShadow>
-              <coneGeometry args={[0.014, 0.03, 4]} />
-              <meshStandardMaterial color="#16A34A" roughness={0.6} />
-            </mesh>
-          ))}
-        </group>
-      )}
-    </group>
-  );
-}
-
-function FoodPeels({ color }: { color?: string }) {
-  const flat = Boolean(color);
-  return (
-    <group position={[-0.02, 0.006, -0.02]}>
-      <CurvedScrap
-        position={[-0.035, 0.004, 0.02]}
-        rotation={[0.02, -0.58, -0.08]}
-        length={0.28}
-        maxWidth={0.046}
-        curl={0.036}
-        lift={0.01}
-        lateral={0.04}
-        cup={0.008}
-        outerColor="#F97316"
-        innerColor="#FDBA74"
-        edgeColor="#C2410C"
-        color={color}
-        innerInset={0.5}
-      />
-      <CurvedScrap
-        position={[0.0, 0.004, -0.08]}
-        rotation={[0, 0.32, 0.08]}
-        length={0.24}
-        maxWidth={0.065}
-        curl={0.025}
-        lift={0.006}
-        lateral={-0.035}
-        cup={0.014}
-        outerColor="#A66A3D"
-        innerColor="#F2D8A7"
-        edgeColor="#70421F"
-        color={color}
-        innerInset={0.58}
-      />
-      <CurvedScrap
-        position={[0.08, 0.01, 0.05]}
-        rotation={[0.03, 2.15, 0.18]}
-        length={0.25}
-        maxWidth={0.074}
-        curl={0.03}
-        lift={0.008}
-        lateral={0.044}
-        cup={0.017}
-        outerColor="#B86AC9"
-        innerColor="#FFF7ED"
-        edgeColor="#8B3FA1"
-        color={color}
-        opacity={0.68}
-        innerInset={0.54}
-      />
-      {!flat && (
-        <>
-          {[
-            [-0.005, 0.052, -0.01],
-            [0.045, 0.047, 0.0],
-            [0.018, 0.05, -0.06],
-          ].map(([x, y, z]) => (
-            <mesh key={`${x}-${z}`} position={[x, y, z]} scale={[1, 0.28, 1]} castShadow>
-              <sphereGeometry args={[0.009, 8, 6]} />
-              <meshStandardMaterial color="#5C351A" roughness={0.82} />
-            </mesh>
-          ))}
-        </>
-      )}
-    </group>
-  );
 }
 
 function createShell(radius: number, seed: number) {
@@ -992,11 +245,13 @@ function KitchenEggshells({ color }: { color?: string }) {
       <group position={[-0.05, 0.038, 0.02]} rotation={[0.55, 0.25, 0.22]}>
         <mesh geometry={primaryShell} castShadow receiveShadow>
           <meshStandardMaterial
-            color={color ?? '#E5BCA0'}
+            attach="material-0"
+            color={color ?? '#FFFFFF'}
             map={eggTexture ?? undefined}
             roughness={0.62}
             side={THREE.DoubleSide}
           />
+          <meshStandardMaterial attach="material-1" color={color ?? '#FFF9ED'} roughness={0.9} side={THREE.DoubleSide} />
         </mesh>
         {/* Subtle glossy residual egg-white glaze in bottom of shell */}
         {!flat && (
@@ -1011,11 +266,13 @@ function KitchenEggshells({ color }: { color?: string }) {
       <group position={[0.09, 0.026, -0.04]} rotation={[-0.6, -0.8, 0.4]}>
         <mesh geometry={secondaryShell} castShadow receiveShadow>
           <meshStandardMaterial
-            color={color ?? '#ECD0B8'}
+            attach="material-0"
+            color={color ?? '#FFFFFF'}
             map={eggTexture ?? undefined}
             roughness={0.64}
             side={THREE.DoubleSide}
           />
+          <meshStandardMaterial attach="material-1" color={color ?? '#FFF9ED'} roughness={0.9} side={THREE.DoubleSide} />
         </mesh>
       </group>
 
@@ -1273,11 +530,9 @@ export function WasteShape({ kind, color, variant = 'default' }: { kind: ModelKi
   const kitchen = variant === 'kitchen';
   switch (kind) {
     case 'banana':
-      if (kitchen) return <KitchenBananaPeel color={color} />;
-      return <BananaPeel color={color} />;
+      return <BananaSkin color={color} />;
     case 'peels':
-      if (kitchen) return <KitchenVegetablePeels color={color} />;
-      return <FoodPeels color={color} />;
+      return <VegetableSkins color={color} />;
     case 'eggshells':
       if (kitchen) return <KitchenEggshells color={color} />;
       return <Eggshells color={color} />;
@@ -1310,12 +565,7 @@ export function WasteShape({ kind, color, variant = 'default' }: { kind: ModelKi
         </RoundedBox>
       );
     case 'bag':
-      return (
-        <mesh castShadow>
-          <sphereGeometry args={[0.22, 18, 14]} />
-          <meshStandardMaterial color={color ?? '#475569'} roughness={0.86} />
-        </mesh>
-      );
+      return <CatalogueShape kind={kind} />;
     case 'wrapper':
       return (
         <RoundedBox args={[0.42, 0.045, 0.26]} radius={0.03} castShadow rotation={[0.2, 0.4, 0.1]}>
@@ -1323,11 +573,7 @@ export function WasteShape({ kind, color, variant = 'default' }: { kind: ModelKi
         </RoundedBox>
       );
     case 'containedSanitary':
-      return (
-        <RoundedBox args={[0.4, 0.14, 0.26]} radius={0.04} castShadow>
-          <meshStandardMaterial color={color ?? '#FDA4AF'} roughness={0.7} />
-        </RoundedBox>
-      );
+      return <CatalogueShape kind={kind} />;
     case 'battery':
       return (
         <group rotation={[0, 0, Math.PI / 2]} position={[0, 0.08, 0]}>
@@ -1380,6 +626,6 @@ export function WasteShape({ kind, color, variant = 'default' }: { kind: ModelKi
         </group>
       );
     default:
-      return null;
+      return <CatalogueShape kind={kind} />;
   }
 }

@@ -1,4 +1,5 @@
-import { mkdir } from 'node:fs/promises';
+import { mkdir, readFile } from 'node:fs/promises';
+import ts from 'typescript';
 import { chromium } from 'playwright-core';
 import { PNG } from 'pngjs';
 
@@ -26,33 +27,61 @@ async function canvasHasPixels(page) {
   return { ok: colors.size > 8 && nonBackground > 20, width: png.width, height: png.height, colors: colors.size, nonBackground };
 }
 
-async function sortWithButtons(page, itemName, destinationName) {
-  await page.getByRole('button', { name: new RegExp(itemName, 'i') }).click();
-  await page.getByRole('button', { name: new RegExp(destinationName, 'i') }).click();
+// Compile the data fixtures directly so this verification also works against a production preview.
+async function loadData(path, replacements = {}) {
+  let source = await readFile(new URL(path, import.meta.url), 'utf8');
+  for (const [from, to] of Object.entries(replacements)) source = source.replace(from, to);
+  const code = ts.transpileModule(source, { compilerOptions: { module: ts.ModuleKind.ESNext } }).outputText;
+  return `data:text/javascript;base64,${Buffer.from(code).toString('base64')}`;
+}
+const wasteModule = await loadData('../src/data/wasteItems.ts');
+const { wasteItems } = await import(wasteModule);
+const { chapters } = await import(await loadData('../src/data/chapters.ts', { './wasteItems': wasteModule }));
+const { destinations } = await import(await loadData('../src/data/bins.ts'));
+
+async function sortWithButtons(page, itemName, destinationName, keyboard = false) {
+  const item = page.locator('.item-button').filter({ has: page.getByText(itemName, { exact: true }) });
+  const bin = page.locator('.destination-button').filter({ has: page.getByText(destinationName, { exact: true }) });
+  if (keyboard) {
+    await item.focus(); await page.keyboard.press('Enter');
+    await bin.focus(); await page.keyboard.press('Enter');
+  } else {
+    await item.click(); await bin.click();
+  }
 }
 
-async function enterChapter(page, title, screenshotName) {
+async function enterChapter(page, title, screenshotName, webgl = true) {
   await page.getByRole('heading', { name: title, exact: true }).waitFor();
   await page.getByRole('button', { name: /^Next$/ }).click();
   await page.getByRole('button', { name: /^Let's help!$/ }).click();
-  await page.waitForSelector('canvas');
+  if (webgl) {
+    await page.waitForSelector('canvas');
+    await page.locator('.scene-loading').waitFor({ state: 'hidden' });
+  }
   await page.screenshot({ path: `test-results/${screenshotName}`, fullPage: true });
 }
 
-async function openSortMenu(page, firstItemName) {
-  const firstItem = page.getByRole('button', { name: new RegExp(firstItemName, 'i') });
-  if (!(await firstItem.isVisible().catch(() => false))) {
-    await page.getByRole('button', { name: /^Sort menu$/ }).click();
-  }
-  await firstItem.waitFor();
+async function openSortMenu(page) {
+  if (!(await page.locator('.accessible-menu').isVisible())) await page.getByRole('button', { name: /^Sort menu$/ }).click();
 }
 
-async function completeChapter(page, pairs) {
-  await openSortMenu(page, pairs[0][0]);
-  for (const [item, bin] of pairs) {
-    await sortWithButtons(page, item, bin);
+async function completeChapter(page, chapter, { skip = [], screenshots = false, keyboard = false } = {}) {
+  await openSortMenu(page);
+  const size = chapter.itemsPerRound ?? 3;
+  for (let index = 0; index < chapter.itemIds.length; index += 1) {
+    const id = chapter.itemIds[index];
+    if (skip.includes(id)) continue;
+    const item = wasteItems.find((candidate) => candidate.id === id);
+    const bin = destinations.find((candidate) => candidate.acceptedCategories.includes(item.category));
+    if (await page.locator('.item-button').count() > size) throw new Error('Too many items in a round');
+    if (screenshots && index % size === 0) {
+      await page.getByRole('button', { name: /^Hide menu$/ }).click();
+      await page.screenshot({ path: `test-results/catalogue-${chapter.id}-round-${Math.floor(index / size) + 1}.png` });
+      await openSortMenu(page);
+    }
+    await sortWithButtons(page, item.displayName, bin.label, keyboard);
   }
-  await page.getByText(/Chapter complete/i).waitFor();
+  await page.getByText('Chapter complete!', { exact: true }).waitFor();
 }
 
 async function main() {
@@ -71,84 +100,51 @@ async function main() {
     await page.getByRole('button', { name: /Let's Play|Start/i }).first().click();
     await page.getByRole('button', { name: /Play/i }).first().click();
 
-    await enterChapter(page, 'Breakfast Sorting', 'stage-1-kitchen.png');
-    const pixelCheck = await canvasHasPixels(page);
-    if (!pixelCheck.ok) throw new Error(`Canvas pixel check failed: ${JSON.stringify(pixelCheck)}`);
-    await openSortMenu(page, 'Banana peel');
-    await sortWithButtons(page, 'Banana peel', 'Dry waste');
-    await page.locator('.feedback-toast').getByText(/Hint/i).waitFor();
-    await sortWithButtons(page, 'Banana peel', 'Wet waste');
-    await page.locator('.feedback-toast').getByText(/Good sorting/i).waitFor();
-    await page.getByRole('button', { name: /Clean paper/i }).focus();
-    await page.keyboard.press('Enter');
-    await page.getByRole('button', { name: /Dry waste/i }).focus();
-    await page.keyboard.press('Enter');
-    await completeChapter(page, [
-      ['Vegetable peels', 'Wet waste'],
-      ['Eggshells', 'Wet waste'],
-      ['Clean cardboard box', 'Dry waste'],
-      ['Empty plastic bottle', 'Dry waste'],
-    ]);
-    await page.screenshot({ path: 'test-results/stage-1-complete.png', fullPage: true });
-    await page.getByRole('button', { name: /^Continue$/ }).click();
-
-    await enterChapter(page, 'No Waste in Drains', 'stage-2-bathroom.png');
-    await completeChapter(page, [
-      ['Empty toothpaste tube', 'Dry waste'],
-      ['Empty shampoo sachet', 'Dry waste'],
-      ['Empty plastic bottle', 'Dry waste'],
-      ['Empty plastic soap wrapper', 'Dry waste'],
-      ['Empty soap box', 'Dry waste'],
-      ['Used cotton buds', 'Sanitary waste'],
-    ]);
-    await page.getByRole('button', { name: /^Continue$/ }).click();
-
-    await enterChapter(page, 'Collection Time', 'stage-3-collection.png');
-    await completeChapter(page, [
-      ['Fruit offcuts', 'Wet waste'],
-      ['Empty plastic bag', 'Dry waste'],
-      ['Newspaper', 'Dry waste'],
-      ['Cooked leftovers', 'Wet waste'],
-    ]);
-    await page.getByRole('button', { name: /^Continue$/ }).click();
-
-    await enterChapter(page, 'School Courtyard', 'stage-4-school.png');
-    await completeChapter(page, [
-      ['Clean paper', 'Dry waste'],
-      ['Empty plastic snack wrapper', 'Dry waste'],
-      ['Banana peel', 'Wet waste'],
-    ]);
-    await page.getByRole('button', { name: /^Continue$/ }).click();
-
-    await enterChapter(page, 'Blocked Street Drain', 'stage-5-flood.png');
-    await completeChapter(page, [
-      ['Empty plastic snack wrapper', 'Dry waste'],
-      ['Empty plastic bottle', 'Dry waste'],
-      ['Empty milk pouch', 'Dry waste'],
-      ['Plant leaves', 'Wet waste'],
-    ]);
-    await page.getByRole('button', { name: /^Continue$/ }).click();
-
-    await enterChapter(page, 'Neighbourhood Challenge', 'stage-6-four-bins.png');
-    await completeChapter(page, [
-      ['Banana peel', 'Wet waste'],
-      ['Clean paper', 'Dry waste'],
-      ['Empty plastic bottle', 'Dry waste'],
-      ['Empty toothpaste tube', 'Dry waste'],
-      ['Safely wrapped sanitary napkin', 'Sanitary waste'],
-      ['Used battery', 'Hazardous household waste'],
-    ]);
-    await page.getByRole('button', { name: /^Continue$/ }).click();
+    let pixelCheck;
+    for (const chapter of chapters) {
+      await enterChapter(page, chapter.title, `stage-${chapter.order}-${chapter.id}.png`);
+      if (chapter.id === 'kitchen') {
+        pixelCheck = await canvasHasPixels(page);
+        if (!pixelCheck.ok) throw new Error(`Canvas pixel check failed: ${JSON.stringify(pixelCheck)}`);
+        await openSortMenu(page);
+        await sortWithButtons(page, 'Banana peel', 'Dry waste');
+        await page.locator('.feedback-toast').getByText(/Hint/i).waitFor();
+        await sortWithButtons(page, 'Banana peel', 'Wet waste');
+        await page.locator('.feedback-toast').getByText(/Good sorting/i).waitFor();
+      }
+      await completeChapter(page, chapter, { skip: chapter.id === 'kitchen' ? ['banana-peel'] : [], screenshots: true, keyboard: chapter.id === 'school' });
+      await page.getByRole('button', { name: /^Continue$/ }).click();
+    }
     await page.getByRole('heading', { name: /neighbourhood is cleaner/i }).waitFor();
     await page.screenshot({ path: 'test-results/all-stages-complete.png', fullPage: true });
 
     await page.getByRole('button', { name: /Replay chapters/i }).click();
     await page.setViewportSize({ width: 390, height: 844 });
-    await page.getByRole('button', { name: /Replay Chapter 5/i }).click();
-    await enterChapter(page, 'Blocked Street Drain', 'mobile-stage-5-flood.png');
-    await page.getByRole('button', { name: /Return to chapter selection/i }).click();
-    await page.getByRole('button', { name: /Replay Chapter 6/i }).click();
-    await enterChapter(page, 'Neighbourhood Challenge', 'mobile-stage-6-four-bins.png');
+    for (const chapter of chapters) {
+      await page.getByRole('button', { name: new RegExp(`Replay Chapter ${chapter.order}`) }).click();
+      await enterChapter(page, chapter.title, `mobile-stage-${chapter.order}-${chapter.id}.png`);
+      await completeChapter(page, chapter);
+      await page.getByRole('button', { name: /Return to chapter selection/i }).click();
+    }
+
+    // The complete curriculum must also work when WebGL is unavailable.
+    const fallback = await browser.newPage({ viewport: { width: 390, height: 844 } });
+    await fallback.addInitScript(() => {
+      const original = HTMLCanvasElement.prototype.getContext;
+      HTMLCanvasElement.prototype.getContext = function (type, ...args) {
+        return type === '2d' ? original.call(this, type, ...args) : null;
+      };
+    });
+    await fallback.goto(baseUrl, { waitUntil: 'networkidle' });
+    await fallback.getByRole('button', { name: /Let's Play|Start/i }).first().click();
+    await fallback.getByRole('button', { name: /Play/i }).first().click();
+    for (const chapter of chapters) {
+      await enterChapter(fallback, chapter.title, `fallback-${chapter.id}.png`, false);
+      await completeChapter(fallback, chapter, { keyboard: true });
+      await fallback.getByRole('button', { name: /^Continue$/ }).click();
+    }
+    await fallback.getByRole('heading', { name: /neighbourhood is cleaner/i }).waitFor();
+    await fallback.close();
 
     await page.getByRole('button', { name: /Open settings/i }).click();
     await page.getByLabel(/Reduced motion/i).check();
@@ -157,7 +153,7 @@ async function main() {
     await page.getByRole('button', { name: /Reset progress/i }).click();
 
     if (consoleErrors.length > 0) throw new Error(`Console errors: ${consoleErrors.join('\n')}`);
-    console.log(`Browser verification passed. Pixel check: ${JSON.stringify(pixelCheck)}`);
+    console.log(`Browser verification passed: every item sorted on desktop, mobile and without WebGL. Pixel check: ${JSON.stringify(pixelCheck)}`);
   } finally {
     await browser.close();
   }

@@ -1,3 +1,4 @@
+import { getSortingRound } from '../game/rounds';
 import { create } from 'zustand';
 import { chapters, firstChapterId, getChapter } from '../data/chapters';
 import { addCompletedChapter, addCompletedItem, calculateUnlocked } from '../game/progression';
@@ -130,6 +131,8 @@ export const useGameStore = create<GameState>((set, get) => ({
   selectItem: (itemId) => {
     const state = get();
     if (state.busy || state.status !== 'playing' || state.completedItemIds.includes(itemId ?? '')) return;
+    const chapter = getChapter(state.chapterId);
+    if (itemId && (!chapter || !getSortingRound(chapter, state.completedItemIds).itemIds.includes(itemId))) return;
     set({ selectedItemId: itemId, status: itemId ? 'playing' : get().status });
   },
   submitDestination: (itemId, destinationId) => {
@@ -139,7 +142,7 @@ export const useGameStore = create<GameState>((set, get) => ({
       return state.feedback ?? getFeedback(itemId, destinationId);
     }
 
-    if (!chapter.itemIds.includes(itemId) || !chapter.destinationIds.includes(destinationId)) {
+    if (!getSortingRound(chapter, state.completedItemIds).itemIds.includes(itemId) || !chapter.destinationIds.includes(destinationId)) {
       return {
         itemId,
         destinationId,

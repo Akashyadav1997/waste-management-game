@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { describe, expect, it } from 'vitest';
 import type { ChapterScene } from '../../game/types';
-import { frameCamera, getSceneFrame } from './sceneLayout';
+import { frameCamera, getSceneFrame, getRoundItemSpots } from './sceneLayout';
 
 const scenes: ChapterScene[] = ['kitchen', 'bathroom', 'street', 'school', 'flood', 'community'];
 const binCount: Record<ChapterScene, number> = {
@@ -12,15 +12,6 @@ const binCount: Record<ChapterScene, number> = {
   flood: 2,
   community: 4,
 };
-const itemCount: Record<ChapterScene, number> = {
-  kitchen: 6,
-  bathroom: 6,
-  street: 4,
-  school: 3,
-  flood: 4,
-  community: 6,
-};
-
 const bodyLocals = [
   new THREE.Vector3(0, 1.05, 0.1),
   new THREE.Vector3(0, 0.62, 0.14),
@@ -51,7 +42,7 @@ describe('scene layout', () => {
       expect(head.y, `${label} head y ${head.y.toFixed(2)}`).toBeGreaterThan(-0.2);
       expect(head.y, `${label} head high`).toBeLessThan(0.95);
 
-      frame.items.slice(0, itemCount[scene]).forEach((item, index) => {
+      getRoundItemSpots(scene, phone).forEach((item, index) => {
         const itemPoint = item.clone().add(new THREE.Vector3(0, 0.18, 0));
         const itemNdc = itemPoint.clone().project(camera);
         const itemView = itemPoint.clone().applyMatrix4(camera.matrixWorldInverse);
@@ -79,7 +70,7 @@ describe('scene layout', () => {
         const [sx, , sz] = frame.surface.position;
         const [width, height, depth] = frame.surface.size;
         const top = frame.surface.position[1] + height / 2;
-        frame.items.slice(0, itemCount[scene]).forEach((item, index) => {
+        getRoundItemSpots(scene, phone).forEach((item, index) => {
           expect(Math.abs(item.x - sx), `${label} item ${index} off the mat`).toBeLessThan(width / 2 - 0.05);
           expect(Math.abs(item.z - sz), `${label} item ${index} off the mat`).toBeLessThan(depth / 2 - 0.02);
           expect(item.y, `${label} item ${index} floating`).toBeGreaterThanOrEqual(top - 0.01);

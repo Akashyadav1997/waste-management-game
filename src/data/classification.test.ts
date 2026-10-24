@@ -68,3 +68,52 @@ describe('four-bin classification data', () => {
     expect(getWasteItem('contained-sanitary')?.preparation).toBe('wrapSafely');
   });
 });
+
+// Explicit curriculum coverage: adding a catalogue entry without making it playable must fail.
+const requiredItems = {
+  wet: ['banana-peel', 'vegetable-peels', 'fruit-offcuts', 'vegetable-offcuts', 'spoiled-produce', 'coffee-grounds', 'paper-coffee-filter', 'plastic-free-tea-bag', 'stale-bread', 'pasta', 'cereals', 'plain-baked-bread', 'cooked-leftovers', 'meat-scraps', 'fish-scraps', 'dairy', 'eggshells', 'nut-shells', 'plant-leaves', 'fresh-flowers', 'dry-leaves', 'dry-flowers', 'packing-straw', 'wooden-ice-cream-stick', 'biodegradable-plate', 'biodegradable-cup', 'biodegradable-glass', 'pencil-shavings'],
+  dry: ['clean-paper', 'clean-tissue', 'clean-cardboard', 'newspaper', 'notebook', 'empty-plastic-bottle', 'plastic-pen', 'plastic-container', 'plastic-bag', 'milk-pouch', 'glass-bottle', 'broken-glass', 'razor', 'stapler-pins', 'metal-can', 'aluminium-foil', 'aluminium-tab', 'soda-can', 'old-clothes', 'fabric-scraps', 'rubber-material', 'broom-sticks', 'thermocol', 'plastic-straw', 'plastic-plate', 'plastic-cup', 'plastic-glass', 'eraser'],
+  sanitary: ['used-diaper', 'contained-sanitary', 'bandage', 'cotton-buds', 'used-tissue'],
+  hazardous: ['used-battery', 'electronics', 'cleaning-chemical', 'paint', 'insecticide', 'expired-medicine', 'thermometer', 'light-bulb', 'tube-light', 'cfl'],
+};
+
+it('covers every requested material in a playable stage and the clarified category', () => {
+  expect(new Set(wasteItems.map((item) => item.id)).size).toBe(wasteItems.length);
+  Object.entries(requiredItems).forEach(([category, ids]) => ids.forEach((id) => {
+    const item = getWasteItem(id);
+    expect(item?.category, id).toBe(category);
+    expect(item?.chapters.length, id).toBeGreaterThan(0);
+    expect(chapters.some((chapter) => chapter.itemIds.includes(id)), id).toBe(true);
+    expect(item?.hint.length, id).toBeGreaterThan(10);
+    expect(item?.handling.length, id).toBeGreaterThan(10);
+  }));
+});
+
+it('teaches preparation for sharp objects and used hygiene items', () => {
+  ['broken-glass', 'razor', 'stapler-pins', 'used-diaper', 'contained-sanitary', 'bandage', 'used-tissue'].forEach((id) => {
+    expect(getWasteItem(id)?.preparation, id).toBe('wrapSafely');
+  });
+  ['plastic-container', 'milk-pouch', 'glass-bottle', 'metal-can', 'soda-can', 'plastic-plate', 'plastic-cup', 'plastic-glass'].forEach((id) => {
+    expect(getWasteItem(id)?.preparation, id).toBe('rinseClean');
+  });
+});
+
+it('gives visually different materials different models', () => {
+  [['plant-leaves', 'vegetable-peels'], ['cooked-leftovers', 'fruit-offcuts'], ['milk-pouch', 'shampoo-sachet'], ['clean-tissue', 'used-tissue'], ['packing-straw', 'plastic-straw'], ['biodegradable-plate', 'plastic-plate'], ['biodegradable-cup', 'plastic-cup'], ['pencil-shavings', 'eraser']].forEach(([first, second]) => {
+    expect(getWasteItem(first)?.model, `${first}/${second}`).not.toBe(getWasteItem(second)?.model);
+  });
+});
+
+it('classifies the contents, not whether an item is wrapped in paper', () => {
+  for (const id of ['clean-paper', 'clean-tissue']) {
+    expect(isCorrectDestination(getWasteItem(id)!, 'dry-bin'), id).toBe(true);
+    expect(isCorrectDestination(getWasteItem(id)!, 'sanitary-bin'), id).toBe(false);
+  }
+  for (const id of ['used-tissue', 'contained-sanitary']) {
+    expect(isCorrectDestination(getWasteItem(id)!, 'sanitary-bin'), id).toBe(true);
+    expect(isCorrectDestination(getWasteItem(id)!, 'dry-bin'), id).toBe(false);
+  }
+  expect(getWasteItem('contained-sanitary')?.displayName).toContain('sanitary pad');
+  expect(getWasteItem('broken-glass')?.preparation).toBe('wrapSafely');
+  expect(isCorrectDestination(getWasteItem('broken-glass')!, 'dry-bin')).toBe(true);
+});

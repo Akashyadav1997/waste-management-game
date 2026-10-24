@@ -1,6 +1,6 @@
 # Waste Management Game
 
-A playable 3D educational browser game for children around ages 7-12. Jyoti learns waste segregation through six short chapters set in Indian home, school and neighbourhood scenes.
+A playable 3D educational browser game for children around ages 7-12. Jyoti learns waste segregation through six chapters with short sorting rounds set in Indian home, school and neighbourhood scenes.
 
 ## Setup
 
@@ -17,6 +17,7 @@ npm run lint
 npm test
 npm run build
 npm run verify:browser
+node scripts/preview-waste.mjs # Close-up model review; requires the Vite dev server
 ```
 
 ## Controls
@@ -32,6 +33,9 @@ npm run verify:browser
 - `src/data/wasteItems.ts`: typed item catalog with category, model kind, hints, explanations, handling instructions and chapter availability.
 - `src/data/bins.ts`: canonical four-bin names, colors and category rules.
 - `src/data/chapters.ts`: story chapter configuration.
+- `src/game/rounds.ts`: chapter-sized rounds shared by the scene, accessible controls and state validation.
+- `src/components/three/OrganicWasteShapes.tsx`: folded banana skin, broad vegetable peels and clean / crumpled tissues.
+- `src/components/three/CatalogueShapes.tsx`: distinct procedural props and locally rendered packaging labels.
 - `src/game/rules.ts`: classification and validation rules.
 - `src/game/audio.ts`: replaceable local audio controller for effects, browser narration and optional ambience.
 - `src/game/progression.ts`: unlock and duplicate-scoring helpers.
@@ -39,6 +43,12 @@ npm run verify:browser
 - `src/state/gameStore.ts`: Zustand game state.
 - `src/components/three/GameScene.tsx`: procedural Three.js/R3F scene, Jyoti, bins and draggable items.
 - `src/components`: accessible HTML screens, HUD, settings and controls.
+
+## Expanded curriculum
+
+All requested materials are playable across the six chapters, with 76 distinct items, item-specific handling tips, and six props per kitchen round (three in other scenes). [WASTE_CATALOGUE.md](WASTE_CATALOGUE.md) lists the stage allocation and classification assumptions. Saved chapter unlocks remain compatible; replay a chapter to explore its added items.
+
+`npm run verify:browser` uses the catalogue to complete every item on desktop, mobile and in the no-WebGL fallback. Run the local server first.
 
 ## Classification Assumptions
 

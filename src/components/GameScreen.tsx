@@ -1,4 +1,5 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
+import { getSortingRound } from '../game/rounds';
 import { getChapter } from '../data/chapters';
 import { destinations, getDestination } from '../data/bins';
 import { getPreparationLabel, getWasteItem } from '../data/wasteItems';
@@ -89,6 +90,7 @@ export function GameScreen({ webglAvailable, reducedMotion }: Props) {
     setIntroIndex(0);
     setMenuOpen(!webglAvailable);
     setConfettiActive(false);
+    setHoveredItemName(undefined);
   }
 
 function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
@@ -151,7 +153,8 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
 
   if (!chapter) return null;
 
-  const items = chapter.itemIds.map((itemId) => getWasteItem(itemId)).filter(Boolean);
+  const round = getSortingRound(chapter, completedItemIds);
+  const items = round.itemIds.map((itemId) => getWasteItem(itemId)).filter(Boolean);
   const progressText = `${completedItemIds.length} of ${chapter.itemIds.length}`;
   const selectedItem = selectedItemId ? getWasteItem(selectedItemId) : undefined;
   const selectedPreparation = getPreparationLabel(selectedItem?.preparation);
@@ -217,10 +220,11 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
       <div className="progress-pill" aria-label={`${chapter.title}, ${progressText} sorted`}>
         <span>{chapter.title}</span>
         <strong>{progressText} sorted</strong>
+        <small aria-live="polite">Round {round.index + 1} of {round.total} · Sort this round to continue</small>
       </div>
 
       {/* Item Hover Name Indicator */}
-      {hoveredItemName && !selectedItemId && status === 'playing' && (
+      {hoveredItemName && !completedItemIds.some((id) => getWasteItem(id)?.displayName === hoveredItemName) && !selectedItemId && status === 'playing' && (
         <div className="hover-item-tooltip" aria-live="polite">
           <span className="tooltip-icon">👉</span>
           <span>Pick up: <strong>{hoveredItemName}</strong></span>
@@ -320,7 +324,8 @@ function getIntroSpokenText(chapter: Chapter, introIndex: number): string {
             </div>
           </div>
           <div className="sort-controls">
-            <h2>Choose item</h2>
+            <h2>Round {round.index + 1} of {round.total}</h2>
+            <p className="round-instruction">Choose an item, read its handling tip, then choose a bin. The next round appears when this one is sorted.</p>
             <div className="item-list">
               {items.map((item) => {
                 if (!item) return null;

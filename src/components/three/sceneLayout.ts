@@ -47,12 +47,12 @@ const rest: ModelDisplay = {
 /** Per-model pose so each prop sits on the surface and keeps its own colours. */
 export const modelDisplay: Record<ModelKind, ModelDisplay> = {
   banana: {
-    scale: 1.06,
-    rotation: [0.1, 0.5, 0],
+    scale: 1,
+    rotation: [0, 0.1, 0],
     offset: [0, 0.012, 0],
     selectionRadius: 0.31,
     selectionScale: [1.08, 0.62],
-    hitSize: [0.58, 0.18, 0.48],
+    hitSize: [0.58, 0.32, 0.48],
   },
   peels: {
     scale: 1.2,
@@ -68,23 +68,84 @@ export const modelDisplay: Record<ModelKind, ModelDisplay> = {
   bottle: rest,
   tube: { ...rest, rotation: [0, 0.35, 0] },
   sachet: { ...rest, rotation: [0, 0.45, 0], offset: [0, 0.03, 0] },
-  bag: { scale: 0.9, rotation: [0, 0.25, 0], offset: [0, 0.2, 0] },
+  bag: { ...rest, rotation: [0, 0.25, 0] },
   wrapper: { ...rest, rotation: [0, 0.55, 0], offset: [0, 0.03, 0] },
-  containedSanitary: { ...rest, offset: [0, 0.08, 0] },
+  containedSanitary: rest,
   battery: { ...rest, rotation: [0, 0.4, 0] },
   actionCard: { ...rest, rotation: [0, -0.25, 0], offset: [0, 0.035, 0] },
   water: rest,
   buds: rest,
+  bandage: rest,
+  bread: rest,
+  breadRoll: rest,
+  brokenGlass: rest,
+  broom: rest,
+  bulb: rest,
+  can: rest,
+  canTab: rest,
+  cereal: rest,
+  cfl: rest,
+  chemical: rest,
+  coffee: rest,
+  coffeeFilter: rest,
+  container: rest,
+  dairy: rest,
+  diaper: rest,
+  dryFlowers: rest,
+  dryLeaves: rest,
+  eraser: rest,
+  fabric: rest,
+  fibreCup: rest,
+  fibreGlass: rest,
+  fish: rest,
+  flowers: rest,
+  foam: rest,
+  foil: rest,
+  fruit: rest,
+  glassBottle: rest,
+  leafPlate: rest,
+  leaves: rest,
+  leftovers: rest,
+  meat: rest,
+  medicine: rest,
+  milkPouch: rest,
+  newspaper: rest,
+  notebook: rest,
+  nuts: rest,
+  paint: rest,
+  pasta: rest,
+  pen: rest,
+  phone: rest,
+  plasticCup: rest,
+  plasticGlass: rest,
+  plasticPlate: rest,
+  plasticStraw: rest,
+  razor: rest,
+  sandal: rest,
+  shavings: rest,
+  shirt: rest,
+  sodaCan: rest,
+  spoiledFruit: rest,
+  spray: rest,
+  staples: rest,
+  strawBundle: rest,
+  teaBag: rest,
+  thermometer: rest,
+  tissue: rest,
+  tubeLight: rest,
+  usedTissue: rest,
+  vegetables: rest,
+  woodStick: rest,
 };
 
 const kitchenModelDisplay: Partial<Record<ModelKind, ModelDisplay>> = {
   banana: {
-    scale: 1.15,
-    rotation: [0.04, 0.15, 0],
+    scale: 0.92,
+    rotation: [0, 0.05, 0],
     offset: [0, 0, 0],
     selectionRadius: 0.36,
     selectionScale: [1.25, 0.8],
-    hitSize: [0.72, 0.28, 0.52],
+    hitSize: [0.54, 0.32, 0.44],
   },
   peels: {
     scale: 1.18,
@@ -290,4 +351,11 @@ export function frameCamera(camera: THREE.PerspectiveCamera, aspect: number, sce
   }
   camera.updateProjectionMatrix();
   camera.updateMatrixWorld();
+}
+
+/** The kitchen retains its six-prop table; smaller surfaces show three per round. */
+export function getRoundItemSpots(scene: ChapterScene, phone: boolean): THREE.Vector3[] {
+  if (scene === 'kitchen') return getSceneFrame(scene, phone).items;
+  if (scene === 'bathroom') return [-0.4, 0.2, 0.8].map((x) => v(x, 0.775, 0.32));
+  return (phone ? [-0.31, 0.03, 0.37] : [-0.3, 0.25, 0.8]).map((x) => v(x, 0.1, 0.85));
 }
