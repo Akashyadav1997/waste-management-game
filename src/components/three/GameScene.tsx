@@ -15,89 +15,13 @@ import { frameCamera, getModelDisplay, getSceneFrame, getRoundItemSpots, type Mo
 import { getSortingRound } from '../../game/rounds';
 import { WasteShape, type WasteShapeVariant } from './WasteShapes';
 
-const DRAG_HEIGHT = 1.05;
-const CATCH_RADIUS = 1.05;
-
-function nearestDestinationId(
-  point: THREE.Vector3,
-  slots: THREE.Vector3[],
-  list: Destination[],
-  radius = CATCH_RADIUS,
-): string | undefined {
-  let bestId: string | undefined;
-  let bestDistance = radius;
-  list.forEach((destination, index) => {
-    const slot = slots[index];
-    if (!slot) return;
-    const distance = Math.hypot(point.x - slot.x, point.z - slot.z);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestId = destination.id;
-    }
-  });
-  return bestId;
-}
-
-function destinationUnderPointer(
-  event: PointerEvent,
-  camera: THREE.Camera,
-  canvas: HTMLCanvasElement,
-  slots: THREE.Vector3[],
-  list: Destination[],
-): string | undefined {
-  const rect = canvas.getBoundingClientRect();
-  const pointerX = event.clientX - rect.left;
-  const pointerY = event.clientY - rect.top;
-  let bestId: string | undefined;
-  let bestDistance = Number.POSITIVE_INFINITY;
-  const binWidth = binMetrics.width * 1.65;
-  const binDepth = binMetrics.depth * 1.65;
-  const binHeight = binMetrics.height + binMetrics.bodyLift + 0.24;
-
-  list.forEach((destination, index) => {
-    const slot = slots[index];
-    if (!slot) return;
-
-    const projected = [
-      [-binWidth / 2, 0, -binDepth / 2],
-      [-binWidth / 2, 0, binDepth / 2],
-      [binWidth / 2, 0, -binDepth / 2],
-      [binWidth / 2, 0, binDepth / 2],
-      [-binWidth / 2, binHeight, -binDepth / 2],
-      [-binWidth / 2, binHeight, binDepth / 2],
-      [binWidth / 2, binHeight, -binDepth / 2],
-      [binWidth / 2, binHeight, binDepth / 2],
-    ].map(([x, y, z]) => {
-      const point = new THREE.Vector3(slot.x + x, y, slot.z + z).project(camera);
-      return {
-        x: ((point.x + 1) / 2) * rect.width,
-        y: ((-point.y + 1) / 2) * rect.height,
-      };
-    });
-
-    const minX = Math.min(...projected.map((point) => point.x)) - 24;
-    const maxX = Math.max(...projected.map((point) => point.x)) + 24;
-    const minY = Math.min(...projected.map((point) => point.y)) - 24;
-    const maxY = Math.max(...projected.map((point) => point.y)) + 24;
-    if (pointerX < minX || pointerX > maxX || pointerY < minY || pointerY > maxY) return;
-
-    const centerX = (minX + maxX) / 2;
-    const centerY = (minY + maxY) / 2;
-    const distance = Math.hypot(pointerX - centerX, pointerY - centerY);
-    if (distance < bestDistance) {
-      bestDistance = distance;
-      bestId = destination.id;
-    }
-  });
-
-  return bestId;
-}
+import { binDropTarget, createDragAnchor, moveDragAnchor, smoothDragPosition } from './dragInteraction';
 
 type DragSession = {
   itemId: string;
   pointerId: number;
   point: THREE.Vector3;
-  offset: THREE.Vector3;
+  anchor: ReturnType<typeof createDragAnchor>;
   hoverId?: string;
 };
 
@@ -205,7 +129,7 @@ function SceneContents({
   draggingRef,
   lowQuality,
 }: Props & { draggingRef: MutableRefObject<boolean>; lowQuality: boolean }) {
-  const { camera, gl, size } = useThree();
+  const { camera, gl, size, scene } = useThree();
   const selectedItemId = useGameStore((state) => state.selectedItemId);
   const completedItemIds = useGameStore((state) => state.completedItemIds);
   const status = useGameStore((state) => state.status);
@@ -225,92 +149,82 @@ function SceneContents({
   const dropHandledRef = useRef(false);
   const [draggingId, setDraggingId] = useState<string | undefined>();
   const [hoverId, setHoverId] = useState<string | undefined>();
-  const plane = useMemo(() => new THREE.Plane(new THREE.Vector3(0, 1, 0), -DRAG_HEIGHT), []);
   const raycaster = useMemo(() => new THREE.Raycaster(), []);
   const onDestinationRef = useRef(onDestination);
-  const slotsRef = useRef(slots);
   const destinationsRef = useRef(chapterDestinations);
-  const catchRadiusRef = useRef(CATCH_RADIUS);
   onDestinationRef.current = onDestination;
-  slotsRef.current = slots;
   destinationsRef.current = chapterDestinations;
-  catchRadiusRef.current = chapter.scene === 'kitchen' ? binMetrics.catchRadius : CATCH_RADIUS;
-
-  const pointOnPlane = (event: PointerEvent) => {
-    const rect = gl.domElement.getBoundingClientRect();
-    const ndc = new THREE.Vector2(
-      ((event.clientX - rect.left) / rect.width) * 2 - 1,
-      -((event.clientY - rect.top) / rect.height) * 2 + 1,
-    );
-    raycaster.setFromCamera(ndc, camera);
-    const hit = new THREE.Vector3();
-    if (!raycaster.ray.intersectPlane(plane, hit)) return null;
-    hit.x = THREE.MathUtils.clamp(hit.x, -5.5, 5.5);
-    hit.z = THREE.MathUtils.clamp(hit.z, -3.5, 3.2);
-    hit.y = DRAG_HEIGHT;
-    return hit;
-  };
-  const pointOnPlaneRef = useRef(pointOnPlane);
-  pointOnPlaneRef.current = pointOnPlane;
 
   useEffect(() => {
-    const updateHover = (session: DragSession, event: PointerEvent) => {
-      const pointerHover = destinationUnderPointer(event, camera, gl.domElement, slotsRef.current, destinationsRef.current);
-      const nextHover = pointerHover ?? nearestDestinationId(session.point, slotsRef.current, destinationsRef.current, catchRadiusRef.current);
-      if (nextHover === session.hoverId) return;
-      session.hoverId = nextHover;
-      setHoverId(nextHover);
+    const updateDrag = (session: DragSession, event: PointerEvent) => {
+      const rect = gl.domElement.getBoundingClientRect();
+      const x = (event.clientX - rect.left) / rect.width;
+      const y = (event.clientY - rect.top) / rect.height;
+      raycaster.setFromCamera(new THREE.Vector2(x * 2 - 1, 1 - y * 2), camera);
+      moveDragAnchor(raycaster.ray, session.anchor, session.point);
+      const bins = destinationsRef.current.flatMap(({ id }) => {
+        const bin = scene.getObjectByName(id);
+        return bin ? [bin] : [];
+      });
+      // Hover and release share this exact hit test. Outside the canvas never drops.
+      const nextHover = x >= 0 && x <= 1 && y >= 0 && y <= 1 ? binDropTarget(raycaster, bins) : undefined;
+      if (nextHover !== session.hoverId) {
+        session.hoverId = nextHover;
+        setHoverId(nextHover);
+      }
+      return nextHover;
     };
 
-    const onMove = (event: PointerEvent) => {
+    const clearDrag = () => {
       const session = dragRef.current;
-      if (!session || event.pointerId !== session.pointerId) return;
-      const hit = pointOnPlaneRef.current(event);
-      if (!hit) return;
-      session.point.set(hit.x + session.offset.x, DRAG_HEIGHT, hit.z + session.offset.z);
-      updateHover(session, event);
-    };
-
-    const finishDrag = (event: PointerEvent) => {
-      const session = dragRef.current;
-      if (!session || event.pointerId !== session.pointerId) return;
-      const hit = pointOnPlaneRef.current(event);
-      if (hit) session.point.set(hit.x + session.offset.x, DRAG_HEIGHT, hit.z + session.offset.z);
-      const destinationId =
-        destinationUnderPointer(event, camera, gl.domElement, slotsRef.current, destinationsRef.current) ??
-        nearestDestinationId(session.point, slotsRef.current, destinationsRef.current, catchRadiusRef.current);
       dragRef.current = null;
       draggingRef.current = false;
       setDraggingId(undefined);
       setHoverId(undefined);
+      if (session && gl.domElement.hasPointerCapture(session.pointerId)) {
+        gl.domElement.releasePointerCapture(session.pointerId);
+      }
+    };
+    const onMove = (event: PointerEvent) => {
+      const session = dragRef.current;
+      if (session && event.pointerId === session.pointerId) updateDrag(session, event);
+    };
+    const finishDrag = (event: PointerEvent) => {
+      const session = dragRef.current;
+      if (!session || event.pointerId !== session.pointerId) return;
+      const destinationId = updateDrag(session, event);
+      clearDrag();
       if (destinationId) {
         dropHandledRef.current = true;
         onDestinationRef.current(session.itemId, destinationId);
-        window.setTimeout(() => {
-          dropHandledRef.current = false;
-        }, 0);
+        window.setTimeout(() => { dropHandledRef.current = false; }, 0);
       }
+    };
+    const cancelDrag = (event: PointerEvent) => {
+      if (dragRef.current?.pointerId === event.pointerId) clearDrag();
     };
 
     window.addEventListener('pointermove', onMove);
     window.addEventListener('pointerup', finishDrag);
-    window.addEventListener('pointercancel', finishDrag);
+    window.addEventListener('pointercancel', cancelDrag);
+    window.addEventListener('blur', clearDrag);
+    gl.domElement.addEventListener('lostpointercapture', cancelDrag);
     return () => {
       window.removeEventListener('pointermove', onMove);
       window.removeEventListener('pointerup', finishDrag);
-      window.removeEventListener('pointercancel', finishDrag);
+      window.removeEventListener('pointercancel', cancelDrag);
+      window.removeEventListener('blur', clearDrag);
+      gl.domElement.removeEventListener('lostpointercapture', cancelDrag);
+      clearDrag();
     };
-  }, [camera, draggingRef, gl.domElement]);
+  }, [camera, draggingRef, gl.domElement, raycaster, scene, chapter.id, phoneLayout]);
 
-  const beginDrag = (itemId: string, origin: THREE.Vector3, event: ThreeEvent<PointerEvent>) => {
-    if (status !== 'playing' || completedItemIds.includes(itemId)) return;
+  const beginDrag = (itemId: string, group: THREE.Group, event: ThreeEvent<PointerEvent>) => {
+    if (status !== 'playing' || completedItemIds.includes(itemId) || dragRef.current || event.button !== 0) return;
     event.stopPropagation();
     onBinHover?.(undefined);
-    const hit = pointOnPlane(event.nativeEvent);
-    const point = hit ? hit.clone() : origin.clone();
-    const offset = new THREE.Vector3(origin.x - point.x, 0, origin.z - point.z);
-    point.set(origin.x, DRAG_HEIGHT, origin.z);
-    dragRef.current = { itemId, pointerId: event.pointerId, point, offset };
+    const point = group.position.clone();
+    dragRef.current = { itemId, pointerId: event.pointerId, point, anchor: createDragAnchor(camera, event.point, point) };
     draggingRef.current = true;
     setDraggingId(itemId);
     setHoverId(undefined);
@@ -318,7 +232,7 @@ function SceneContents({
     try {
       gl.domElement.setPointerCapture(event.pointerId);
     } catch {
-      // Pointer capture is optional
+      // Window listeners still support devices without pointer capture.
     }
   };
 
@@ -363,6 +277,7 @@ function SceneContents({
             <InteractiveWaste
               key={`${chapter.id}-${item.id}`}
               item={item}
+              reducedMotion={reducedMotion}
               sceneScale={chapter.scene === 'kitchen' || chapter.scene === 'bathroom' ? 1 : phoneLayout ? 0.58 : 0.85}
               origin={spots[index] ?? new THREE.Vector3(0, 0.7, 0)}
               selected={selectedItemId === item.id}
@@ -373,7 +288,7 @@ function SceneContents({
               spotYaw={frame.itemYaw[index] ?? 0}
               variant={wasteShapeVariant}
               displayVariant={modelDisplayVariant}
-              onDragStart={(event) => beginDrag(item.id, spots[index] ?? new THREE.Vector3(0, 0.7, 0), event)}
+              onDragStart={(event, group) => beginDrag(item.id, group, event)}
               onHoverChange={(hovered) => {
                 if (onItemHover) onItemHover(hovered ? item.displayName : undefined);
               }}
@@ -389,6 +304,7 @@ function SceneContents({
             position={slots[index] ?? new THREE.Vector3(index === 0 ? -1.95 : 2.35, 0, 0.75)}
             rotation={kitchen ? [0, 0, 0] : index === 0 ? [0, 0.25, 0] : [0, -0.25, 0]}
             highlighted={hoverId === destination.id}
+            reducedMotion={reducedMotion}
             selectedItemId={selectedItemId}
             dropHandledRef={dropHandledRef}
             onDestination={onDestination}
@@ -847,6 +763,7 @@ function DestinationModel({
   position,
   rotation = [0, 0, 0],
   highlighted,
+  reducedMotion,
   selectedItemId,
   dropHandledRef,
   onDestination,
@@ -856,6 +773,7 @@ function DestinationModel({
   position: THREE.Vector3;
   rotation?: [number, number, number];
   highlighted: boolean;
+  reducedMotion: boolean;
   selectedItemId?: string;
   dropHandledRef: MutableRefObject<boolean>;
   onHoverChange: (hovered: boolean) => void;
@@ -866,6 +784,14 @@ function DestinationModel({
   const faceColor = destination.id === 'sanitary-bin' ? '#6B5D00' : binColor;
 
   const binFace = useMemo(() => makeBinFaceTexture(word, faceColor), [word, faceColor]);
+  const visualRef = useRef<THREE.Group>(null);
+
+  useFrame((_, delta) => {
+    if (!visualRef.current) return;
+    const target = highlighted ? 1.08 : 1;
+    const scale = reducedMotion ? target : THREE.MathUtils.damp(visualRef.current.scale.x, target, 16, delta);
+    visualRef.current.scale.setScalar(scale);
+  });
 
   useEffect(() => () => binFace.dispose(), [binFace]);
   useCursor(Boolean(selectedItemId));
@@ -875,7 +801,6 @@ function DestinationModel({
       name={destination.id}
       position={position}
       rotation={rotation}
-      scale={highlighted ? 1.08 : 1}
       onPointerOver={(event) => {
         event.stopPropagation();
         onHoverChange(true);
@@ -894,7 +819,10 @@ function DestinationModel({
         if (selectedItemId) onDestination(selectedItemId, destination.id);
       }}
     >
-      <HollowBin color={binColor} highlighted={highlighted} label={binFace} />
+      <group ref={visualRef}>
+        <HollowBin color={binColor} highlighted={highlighted} label={binFace} />
+      </group>
+
     </group>
   );
 }
@@ -929,6 +857,7 @@ function ItemHitTarget({ size }: { size?: [number, number, number] }) {
 
 function InteractiveWaste({
   item,
+  reducedMotion,
   sceneScale,
   origin,
   spotYaw,
@@ -943,6 +872,7 @@ function InteractiveWaste({
   onHoverChange,
 }: {
   item: WasteItem;
+  reducedMotion: boolean;
   sceneScale: number;
   origin: THREE.Vector3;
   spotYaw: number;
@@ -953,7 +883,7 @@ function InteractiveWaste({
   sortedSlot?: THREE.Vector3;
   variant: WasteShapeVariant;
   displayVariant: ModelDisplayVariant;
-  onDragStart: (event: ThreeEvent<PointerEvent>) => void;
+  onDragStart: (event: ThreeEvent<PointerEvent>, group: THREE.Group) => void;
   onHoverChange?: (hovered: boolean) => void;
 }) {
   const [hovered, setHovered] = useState(false);
@@ -967,19 +897,49 @@ function InteractiveWaste({
     groupRef.current?.position.copy(origin);
   }, [origin]);
 
+  useLayoutEffect(() => {
+    if (!dragging || !groupRef.current) return;
+    // Carry the item visibly above the scene, even when its drag plane is behind a bin.
+    // Clone materials so other items that share a material remain unaffected.
+    const restore: (() => void)[] = [];
+    groupRef.current.traverse((object) => {
+      if (!(object instanceof THREE.Mesh)) return;
+      const original = object.material;
+      const order = object.renderOrder;
+      const shadow = object.castShadow;
+      const materials = (Array.isArray(original) ? original : [original]).map((material) => {
+        const copy = material.clone();
+        copy.depthTest = false;
+        copy.depthWrite = false;
+        copy.transparent = true;
+        return copy;
+      });
+      object.material = Array.isArray(original) ? materials : materials[0];
+      object.renderOrder = 1000 + order;
+      object.castShadow = false;
+      restore.push(() => {
+        object.material = original;
+        object.renderOrder = order;
+        object.castShadow = shadow;
+        materials.forEach((material) => material.dispose());
+      });
+    });
+    return () => restore.forEach((reset) => reset());
+  }, [dragging]);
+
   const target = useMemo(() => {
     if (completed && sortedSlot) return new THREE.Vector3(sortedSlot.x, binMetrics.interiorY, sortedSlot.z);
     return origin;
   }, [completed, origin, sortedSlot]);
 
-  useCursor(hovered && !completed, 'grab');
+  useCursor((hovered || dragging) && !completed, dragging ? 'grabbing' : 'grab');
 
-  useFrame(() => {
+  useFrame(({ camera, size }, delta) => {
     const group = groupRef.current;
     if (!group) return;
     if (dragging && dragPoint) {
-      group.position.lerp(dragPoint, 0.45);
-      group.scale.setScalar(1.15);
+      smoothDragPosition(group.position, dragPoint, camera, size.height, delta, reducedMotion);
+      // Keep the scale at pickup so the grabbed point does not shift.
       return;
     }
     group.position.lerp(target, completed ? 0.16 : 0.2);
@@ -991,8 +951,8 @@ function InteractiveWaste({
       name={`waste-${item.id}`}
       ref={groupRef}
       onPointerDown={(event) => {
-        if (completed) return;
-        onDragStart(event);
+        if (completed || !groupRef.current) return;
+        onDragStart(event, groupRef.current);
       }}
       onPointerOver={(event) => {
         event.stopPropagation();

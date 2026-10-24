@@ -1,6 +1,9 @@
 import { useEffect, useMemo, useState } from 'react';
-import { classificationSource } from './data/bins';
+import { binScheme, classificationSource } from './data/bins';
 import { useGameStore } from './state/gameStore';
+import { chapters } from './data/chapters';
+import { wasteItems } from './data/wasteItems';
+import { CompletionCelebration } from './components/CompletionCelebration';
 import { ChapterSelect } from './components/ChapterSelect';
 import { GameScreen } from './components/GameScreen';
 import { SettingsPanel } from './components/SettingsPanel';
@@ -42,6 +45,7 @@ export default function App() {
             <p className="title-desc">
               Help Jyoti sort waste and make her home, school and neighbourhood cleaner.
             </p>
+            <p className="learning-summary">{chapters.length} chapters · {wasteItems.length} everyday items · 4 kinds of waste</p>
             <div className="title-actions">
               <button
                 type="button"
@@ -90,6 +94,45 @@ export default function App() {
               loading="eager"
             />
           </div>
+        </section>
+
+        <section className="learning-banner" aria-labelledby="learning-title">
+          <div>
+            <p className="eyebrow">Small habits. A cleaner neighbourhood.</p>
+            <h2 id="learning-title">Learn it here. Use it every day.</h2>
+            <p>From breakfast scraps to school litter, discover where everyday waste belongs.</p>
+          </div>
+          <ol className="learning-steps">
+            <li><span>1</span> Pick an item</li>
+            <li><span>2</span> Choose its bin</li>
+            <li><span>3</span> Learn why it belongs</li>
+          </ol>
+        </section>
+
+        <section className="landing-bins" aria-labelledby="landing-bins-title">
+          <div className="landing-bins-heading">
+            <h2 id="landing-bins-title">Meet the four bins</h2>
+            <p>Your sorting guide for this adventure</p>
+          </div>
+          <div className="landing-bin-grid">
+            {binScheme.map((bin) => (
+              <article className="landing-bin-card" key={bin.id}>
+                <svg className="landing-bin-icon" viewBox="0 0 56 64" aria-hidden="true">
+                  <path d="M11 17h34l-3 42H14z" fill={bin.color} stroke="#173b2d" strokeOpacity=".18" strokeWidth="2" />
+                  <rect x="7" y="10" width="42" height="8" rx="3" fill={bin.color} />
+                  <path d="M22 10V6h12v4" fill="none" stroke={bin.color} strokeWidth="4" />
+                  <rect x="19" y="28" width="18" height="20" rx="4" fill="white" />
+                  <text x="28" y="42" textAnchor="middle" fontSize="12" fontWeight="800" fill="#173b2d">{bin.symbol}</text>
+                </svg>
+                <div>
+                  <span className="landing-bin-color">{bin.colorName} bin</span>
+                  <h3>{bin.shortLabel} waste</h3>
+                  <p>{bin.examples[0]}</p>
+                </div>
+              </article>
+            ))}
+          </div>
+          <p className="landing-care-note">Learn to rinse packaging, wrap waste safely and ask an adult for help with hazardous items.</p>
         </section>
 
         <footer className="title-footer">
@@ -161,32 +204,12 @@ export default function App() {
   if (screen === 'complete') {
     return (
       <main className="app-shell celebration-shell">
-        <section className="celebration">
-          <span className="eyebrow-pill">All chapters complete</span>
-          <h1>Jyoti's neighbourhood is cleaner!</h1>
-          <p>
-            You completed all {completedChapters.length} chapters! Waste reached separated collection, drains stayed clearer,
-            and unsafe tasks were handled by trained adults.
-          </p>
-          <div className="title-actions">
-            <button
-              type="button"
-              className="lets-play-button"
-              onClick={() => useGameStore.getState().openChapters()}
-            >
-              Replay chapters
-            </button>
-            <button
-              type="button"
-              className="continue-button"
-              onClick={() => {
-                if (window.confirm('Reset all saved progress?')) resetProgress();
-              }}
-            >
-              Reset progress
-            </button>
-          </div>
-        </section>
+        <CompletionCelebration
+          completedChapters={completedChapters}
+          reducedMotion={settings.reducedMotion}
+          onReplay={() => useGameStore.getState().openChapters()}
+          onReset={() => { if (window.confirm('Reset all saved progress?')) resetProgress(); }}
+        />
         {settingsOpen && <SettingsPanel onClose={() => setSettingsOpen(false)} />}
       </main>
     );

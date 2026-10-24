@@ -15,7 +15,7 @@ type Particle = {
 
 const COLORS = ['#15803D', '#22C55E', '#1D4ED8', '#38BDF8', '#F59E0B', '#FBBF24', '#EC4899', '#EF4444'];
 
-export function ConfettiBurst({ active }: { active: boolean }) {
+export function ConfettiBurst({ active, repeat = false }: { active: boolean; repeat?: boolean }) {
   const [particles, setParticles] = useState<Particle[]>([]);
 
   useEffect(() => {
@@ -24,13 +24,12 @@ export function ConfettiBurst({ active }: { active: boolean }) {
       return;
     }
 
-    // Spawn 32 festive firecracker confetti particles from bottom-right / center
-    const newParticles: Particle[] = Array.from({ length: 36 }, (_, i) => {
+    const spawn = (): Particle[] => Array.from({ length: 36 }, (_, i) => {
       const angle = (Math.PI * 2 * i) / 36 + (Math.random() - 0.5) * 0.4;
       const speed = 4 + Math.random() * 8;
       return {
         id: Math.random() + i,
-        x: window.innerWidth * (0.35 + Math.random() * 0.3),
+        x: window.innerWidth * (repeat ? (i % 2 === 0 ? 0.15 : 0.85) : 0.35 + Math.random() * 0.3),
         y: window.innerHeight * (0.5 + Math.random() * 0.2),
         vx: Math.cos(angle) * speed,
         vy: Math.sin(angle) * speed - 6, // Upward initial explosion
@@ -42,25 +41,32 @@ export function ConfettiBurst({ active }: { active: boolean }) {
       };
     });
 
-    setParticles(newParticles);
+    setParticles(spawn());
 
     let animationFrame: number;
-    const startTime = performance.now();
+    let startTime = performance.now();
+    let lastTime = startTime;
 
     const update = (now: number) => {
       const elapsed = now - startTime;
       if (elapsed > 1400) {
-        setParticles([]);
+        if (!repeat) { setParticles([]); return; }
+        startTime = now;
+        lastTime = now;
+        setParticles(spawn());
+        animationFrame = requestAnimationFrame(update);
         return;
       }
+      const step = Math.min((now - lastTime) / (1000 / 60), 2);
+      lastTime = now;
 
       setParticles((prev) =>
         prev.map((p) => ({
           ...p,
-          x: p.x + p.vx,
-          y: p.y + p.vy,
-          vy: p.vy + 0.35, // Gravity
-          rotation: p.rotation + p.vRot,
+          x: p.x + p.vx * step,
+          y: p.y + p.vy * step,
+          vy: p.vy + 0.35 * step,
+          rotation: p.rotation + p.vRot * step,
         })),
       );
 
@@ -69,12 +75,13 @@ export function ConfettiBurst({ active }: { active: boolean }) {
 
     animationFrame = requestAnimationFrame(update);
     return () => cancelAnimationFrame(animationFrame);
-  }, [active]);
+  }, [active, repeat]);
 
   if (particles.length === 0) return null;
 
   return (
     <div
+      className="confetti-burst"
       style={{
         position: 'fixed',
         inset: 0,

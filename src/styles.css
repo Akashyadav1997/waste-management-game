@@ -97,18 +97,19 @@ button:disabled {
   flex-direction: column;
   justify-content: center;
   align-items: center;
-  padding: 40px 24px 28px;
+  padding: 48px 24px 28px;
+  gap: 32px;
   min-height: 100vh;
 }
 
 .title-scene {
   display: grid;
-  grid-template-columns: 1.1fr 0.9fr;
+  grid-template-columns: 1.35fr 0.65fr;
   max-width: 1140px;
   width: 100%;
   align-items: center;
   gap: 48px;
-  margin: auto 0;
+  margin: 0;
 }
 
 .title-copy {
@@ -145,8 +146,28 @@ button:disabled {
   line-height: 1.6;
   color: var(--color-text-muted);
   max-width: 480px;
-  margin: 0 0 32px;
+  margin: 0 0 16px;
 }
+
+.learning-summary { color: #476052; font-size: 0.9rem; font-weight: 700; margin: 0 0 24px; }
+.learning-banner, .landing-bins { width: 100%; max-width: 1140px; }
+.learning-banner { display: flex; align-items: center; justify-content: space-between; gap: 32px; padding: 24px 30px; border-radius: 24px; background: #e4efdf; border: 1px solid #ccddc5; }
+.learning-banner .eyebrow { margin: 0 0 8px; font-size: 0.72rem; }
+.learning-banner h2 { margin: 0 0 8px; font-size: clamp(1.35rem, 2vw, 1.8rem); }
+.learning-banner p:last-child { margin: 0; color: #476052; line-height: 1.5; max-width: 520px; }
+.learning-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; flex-shrink: 0; font-size: 0.9rem; font-weight: 700; }
+.learning-steps li { display: flex; align-items: center; gap: 10px; }
+.learning-steps span { display: grid; place-items: center; width: 26px; height: 26px; border-radius: 50%; background: #fffdf5; color: #166534; }
+.landing-bins-heading { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; margin-bottom: 14px; }
+.landing-bins-heading h2 { margin: 0; font-size: 1.25rem; }
+.landing-bins-heading p { margin: 0; font-size: 0.86rem; color: #476052; }
+.landing-bin-grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 12px; }
+.landing-bin-card { display: flex; align-items: flex-start; gap: 12px; padding: 18px 14px; border: 1px solid #e0e5d9; border-radius: 18px; background: #fffdf8; }
+.landing-bin-icon { flex: 0 0 44px; width: 44px; height: 52px; }
+.landing-bin-color { font-size: 0.7rem; color: #526556; font-weight: 700; }
+.landing-bin-card h3 { font-size: 0.98rem; margin: 4px 0 8px; }
+.landing-bin-card p { font-size: 0.8rem; line-height: 1.5; margin: 0; color: #476052; }
+.landing-care-note { margin: 14px 0 0; font-size: 0.8rem; line-height: 1.5; color: #476052; }
 
 .title-actions {
   display: flex;
@@ -227,21 +248,24 @@ button:disabled {
   overflow: hidden;
   box-shadow: var(--shadow-lg);
   border: 4px solid #FFFFFF;
-  aspect-ratio: 16 / 10;
-  max-width: 520px;
+  aspect-ratio: 4 / 5;
+  max-width: 320px;
+  justify-self: end;
   width: 100%;
   background: #FFF7ED;
 }
 
 .title-hero-frame img.hero-image {
-  width: 100%;
+  width: 225%;
+  max-width: none;
+  margin-left: -125%;
   height: 100%;
   object-fit: cover;
   display: block;
 }
 
 .title-footer {
-  margin-top: 36px;
+  margin-top: 0;
   display: flex;
   justify-content: center;
 }
@@ -345,10 +369,6 @@ button:disabled {
   width: 100%;
   margin: 0 auto;
   padding: 28px 20px 48px;
-}
-
-.chapter-nav-bar {
-  margin-bottom: 16px;
 }
 
 .back-button {
@@ -1374,23 +1394,27 @@ button:disabled {
 /* Responsive Breakpoints */
 @media (max-width: 1024px) {
   .title-scene {
-    grid-template-columns: 1fr;
+    grid-template-columns: 1.3fr 0.7fr;
     gap: 32px;
-    text-align: center;
+    text-align: left;
   }
 
   .title-copy {
-    align-items: center;
+    align-items: flex-start;
   }
 
   .title-actions {
     justify-content: center;
   }
 
+  .title-scene .title-actions { justify-content: flex-start; }
+
   .title-hero-frame {
     margin: 0 auto;
-    max-width: 480px;
+    max-width: 280px;
   }
+
+  .landing-bin-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 
   .chapter-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -1398,6 +1422,15 @@ button:disabled {
 }
 
 @media (max-width: 640px) {
+  .title-shell { padding: 28px 18px; gap: 26px; }
+  .title-scene { grid-template-columns: 1fr; gap: 24px; text-align: center; }
+  .title-copy { align-items: center; }
+  .title-scene .title-actions { justify-content: center; gap: 10px; }
+  .title-hero-frame { justify-self: center; max-width: 220px; }
+  .learning-summary { font-size: 0.8rem; }
+  .learning-banner { flex-direction: column; align-items: flex-start; gap: 20px; padding: 22px; }
+  .landing-bins-heading { flex-direction: column; gap: 6px; }
+  .landing-bin-card { flex-direction: column; gap: 8px; padding: 14px; }
   .chapter-grid {
     grid-template-columns: 1fr;
   }
@@ -1537,4 +1570,98 @@ button:disabled {
 .bin-guide-note { margin: 14px 0 0; padding-top: 12px; border-top: 1px solid #e1e9e4; font-size: 0.76rem; line-height: 1.5; color: #53665d; }
 @media (max-width: 1100px) {
   .bin-guide { top: 94px; }
+}
+
+/* Keep the desktop welcome screen within a typical laptop viewport. */
+@media (min-width: 1100px) {
+  .title-shell {
+    display: grid;
+    grid-template-columns: minmax(0, 1000px) minmax(250px, 280px);
+    grid-template-rows: auto auto auto;
+    justify-content: center;
+    align-content: center;
+    padding: 24px 32px;
+    column-gap: 28px;
+    row-gap: 22px;
+    min-height: 100svh;
+  }
+  .title-scene { grid-template-columns: minmax(0, 1fr) clamp(240px, 22vw, 300px); gap: 28px; max-width: none; }
+  .title-copy h1 { font-size: clamp(2.5rem, 3.6vw, 3.5rem); margin-bottom: 14px; }
+  .title-desc { font-size: 1.05rem; line-height: 1.5; }
+  .title-hero-frame { width: 100%; max-width: 300px; }
+  .title-shell .learning-summary { margin-bottom: 20px; font-size: 0.8rem; }
+  .title-shell .title-actions { gap: 10px; }
+  .title-shell .title-actions button { padding: 12px 20px; font-size: 1rem; }
+  .title-shell .learning-banner { flex-direction: column; align-items: flex-start; align-self: center; justify-content: center; padding: 22px; gap: 18px; height: auto; background: #edf3e6; }
+  .title-shell .learning-banner h2 { font-size: 1.35rem; }
+  .title-shell .learning-banner p:last-child { font-size: 0.9rem; }
+  .title-shell .landing-bins { grid-column: 1 / -1; max-width: none; }
+  .title-shell .title-footer { grid-column: 1 / -1; }
+  .title-shell .landing-bin-card { padding: 14px; }
+}
+@media (min-width: 641px) and (max-width: 1099px) {
+  .title-shell { gap: 18px; padding: 24px; }
+  .title-shell .title-scene { gap: 24px; grid-template-columns: minmax(0, 1fr) clamp(180px, 22vw, 220px); }
+  .title-copy h1 { font-size: 2.6rem; }
+  .title-hero-frame { width: 100%; max-width: 220px; }
+  .title-desc { font-size: 1rem; line-height: 1.4; }
+  .title-shell .title-actions button { padding: 10px 16px; font-size: 0.95rem; }
+  .title-shell .learning-banner { padding: 18px 22px; gap: 18px; }
+  .title-shell .learning-banner h2 { font-size: 1.25rem; }
+  .title-shell .learning-banner p:last-child { font-size: 0.85rem; }
+  .title-shell .landing-bin-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+  .title-shell .landing-bin-card { padding: 12px; gap: 6px; flex-direction: column; }
+  .title-shell .landing-bin-icon { width: 30px; height: 34px; flex-basis: 34px; }
+  .title-shell .landing-bins-heading { margin-bottom: 10px; }
+}
+
+/* A full-game achievement with a visible record of the player's journey. */
+.celebration-shell {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: 20px;
+  min-height: 100svh;
+  background: radial-gradient(ellipse at 15% 20%, #e0efd9 0, transparent 45%), radial-gradient(ellipse at 90% 75%, #ffedb5 0, transparent 45%), #fff8e8;
+}
+.celebration {
+  display: grid;
+  grid-template-columns: 230px minmax(0, 1fr);
+  gap: 28px 36px;
+  max-width: 980px;
+  width: 100%;
+  padding: 36px;
+  text-align: left;
+  border: 2px solid #fff;
+  background: #fffdf7;
+}
+.champion-award { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 12px; border-radius: 22px; padding: 22px 14px; background: #edf4e5; text-align: center; }
+.award-stars { color: #b77b0c; font-size: 1.7rem; letter-spacing: 12px; padding-left: 12px; }
+.champion-medal { width: 160px; height: 178px; filter: drop-shadow(0 8px 10px #9a710c20); }
+.champion-award strong { font-family: var(--font-heading); font-size: 1.3rem; }
+.champion-award > span:last-child { font-size: 0.8rem; color: #476052; }
+.celebration-copy .eyebrow-pill { font-size: 0.72rem; margin-bottom: 6px; }
+.celebration-copy h1 { font-size: clamp(1.8rem, 3vw, 2.5rem); line-height: 1.15; margin: 12px 0; }
+.celebration-copy p { font-size: 1rem; line-height: 1.6; margin: 0 0 20px; }
+.completion-stats { display: flex; gap: 32px; margin-bottom: 24px; }
+.completion-stats div { display: flex; flex-direction: column; gap: 2px; }
+.completion-stats strong { font-family: var(--font-heading); font-size: 1.9rem; color: #15803d; }
+.completion-stats span { font-size: 0.8rem; color: #476052; }
+.celebration .title-actions { justify-content: flex-start; gap: 12px; }
+.celebration .title-actions button { font-size: 1rem; padding: 12px 22px; }
+.completed-journey { grid-column: 1 / -1; border-top: 1px solid #dfe7d7; padding-top: 22px; }
+.completed-journey h2 { font-size: 1rem; margin-bottom: 14px; }
+.completed-journey ul { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 12px; list-style: none; padding: 0; margin: 0; }
+.completed-journey li { display: flex; align-items: center; gap: 8px; font-size: 0.8rem; }
+.completed-journey li span { display: grid; place-items: center; background: #dcfce7; color: #166534; width: 22px; height: 22px; border-radius: 50%; flex-shrink: 0; }
+.celebration-toggle { background: #fffdf7; border: 1px solid #d6dfce; color: #476052; padding: 8px 18px; font-size: 0.85rem; }
+@media (max-width: 640px) {
+  .celebration-shell { padding: 20px 16px; gap: 14px; }
+  .celebration { grid-template-columns: 1fr; gap: 20px; padding: 22px; text-align: center; }
+  .champion-award { padding: 12px; gap: 6px; }
+  .champion-medal { width: 95px; height: 106px; }
+  .award-stars { font-size: 1.1rem; }
+  .completion-stats, .celebration .title-actions { justify-content: center; }
+  .completed-journey ul { grid-template-columns: repeat(2, minmax(0, 1fr)); text-align: left; }
 }

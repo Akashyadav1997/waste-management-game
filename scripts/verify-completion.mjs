@@ -1,0 +1,43 @@
+import { chromium } from 'playwright-core';
+import { mkdir } from 'node:fs/promises';
+const browser = await chromium.launch({ executablePath: '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome', headless: true });
+try {
+  const page = await browser.newPage({ viewport: { width: 1440, height: 900 } });
+  page.setDefaultTimeout(10000);
+  const errors = [];
+  page.on('pageerror', (error) => errors.push(error.message));
+  await page.goto(process.env.PLAYWRIGHT_BASE_URL ?? 'http://127.0.0.1:5173', { waitUntil: 'networkidle' });
+  await page.evaluate(async () => {
+    const { useGameStore } = await import(performance.getEntriesByType('resource').find(e => e.name.includes('/src/state/gameStore.ts')).name);
+    const { chapters } = await import('/src/data/chapters.ts');
+    window.testGameStore = useGameStore;
+    useGameStore.setState({ screen: 'complete', completedChapters: chapters.map(c => c.id) });
+  });
+  await page.getByRole('heading', { name: 'Jyoti’s neighbourhood is cleaner!' }).waitFor();
+  if (await page.locator('.completed-journey li').count() !== 6) throw new Error('Incomplete journey recap');
+  await page.locator('.confetti-burst').waitFor();
+  await mkdir('test-results', { recursive: true });
+  await page.waitForTimeout(250);
+  await page.screenshot({ path: 'test-results/completion-desktop.png' });
+  const firstParticle = await page.locator('.confetti-burst > div').first().elementHandle();
+  await page.waitForTimeout(1600);
+  if (await firstParticle.evaluate(node => node.isConnected)) throw new Error('Confetti did not repeat');
+  if (await page.locator('.confetti-burst > div').count() !== 36) throw new Error('Particles accumulated or stopped');
+  await page.getByRole('button', { name: 'Pause celebration' }).click();
+  await page.locator('.confetti-burst').waitFor({ state: 'detached' });
+  await page.getByRole('button', { name: 'Resume celebration' }).click();
+  await page.locator('.confetti-burst').waitFor();
+  await page.evaluate(() => window.testGameStore.getState().updateSettings({ reducedMotion: true }));
+  await page.locator('.confetti-burst').waitFor({ state: 'detached' });
+  await page.evaluate(() => window.testGameStore.getState().updateSettings({ reducedMotion: false }));
+  await page.emulateMedia({ reducedMotion: 'reduce' });
+  await page.locator('.confetti-burst').waitFor({ state: 'detached' });
+  await page.setViewportSize({ width: 390, height: 844 });
+  if (await page.evaluate(() => document.documentElement.scrollWidth > innerWidth)) throw new Error('Mobile horizontal overflow');
+  await page.screenshot({ path: 'test-results/completion-mobile.png' });
+  await page.getByRole('button', { name: 'Replay chapters', exact: true }).click();
+  await page.getByRole('heading', { name: "Choose Jyoti's next stop" }).waitFor();
+  if (await page.locator('.confetti-burst').count()) throw new Error('Confetti persisted after leaving');
+  if (errors.length) throw new Error(errors.join('\n'));
+  console.log('Verified completion recap, repeating bounded confetti, pause/resume, game and system reduced motion, mobile layout, and replay navigation.');
+} finally { await browser.close(); }

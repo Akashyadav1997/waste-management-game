@@ -6,21 +6,9 @@ export function ChapterSelect() {
   const unlocked = useGameStore((state) => state.unlockedChapters);
   const completed = useGameStore((state) => state.completedChapters);
   const startChapter = useGameStore((state) => state.startChapter);
-  const openTitle = useGameStore((state) => state.openTitle);
 
   return (
     <section className="chapter-select" aria-labelledby="chapters-title">
-      <div className="chapter-nav-bar">
-        <button
-          type="button"
-          className="back-button"
-          onClick={openTitle}
-          aria-label="Back to landing screen"
-        >
-          <span className="arrow">←</span> Back to Home
-        </button>
-      </div>
-
       <div className="section-heading">
         <p className="eyebrow">Chapter Selection</p>
         <h1 id="chapters-title">Choose Jyoti's next stop</h1>
