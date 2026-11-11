@@ -100,12 +100,12 @@ export default function App() {
           <div>
             <p className="eyebrow">Small habits. A cleaner neighbourhood.</p>
             <h2 id="learning-title">Learn it here. Use it every day.</h2>
-            <p>From breakfast scraps to school litter, discover where everyday waste belongs.</p>
+            <p>Play the game and learn where everyday waste belongs, from breakfast scraps to school litter.</p>
           </div>
           <ol className="learning-steps">
             <li><span>1</span> Pick an item</li>
             <li><span>2</span> Choose its bin</li>
-            <li><span>3</span> Learn why it belongs</li>
+            <li><span>3</span> Learn where it belongs</li>
           </ol>
         </section>
 
